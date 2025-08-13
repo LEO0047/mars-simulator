@@ -948,8 +948,16 @@
             currentTransferMode = mode;
             document.querySelectorAll('.transfer-mode-btn').forEach(btn => btn.classList.remove('active'));
             getById(`mode-${mode}`).classList.add('active');
+
+            // 切換轉移模式時同步更新發射窗口，避免使用上一模式的發射時間
+            launchDay = transferModes[mode].optimalLaunchDay;
+            const launchInput = getById('launchWindow');
+            launchInput.value = launchDay;
+            getById('launchValue').textContent = `第 ${launchDay} 天`;
+
             updateMissionParamsUI();
-            if (spacecraft.phase === 'waiting') draw();
+            if (spacecraft.phase !== 'waiting') resetSimulation();
+            draw();
         }
 
         function startTransfer() {
