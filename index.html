@@ -1,1143 +1,201 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
+<!doctype html>
+<html lang="zh-Hant-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>火星任務軌道模擬器</title>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#080c10">
+    <meta name="description" content="互動式地球—火星轉移軌道實驗室：比較霍曼與快速轉移，調整發射窗口並解讀會合幾何。">
+    <title>火星轉移軌道實驗室</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            /* 迷幻太空色彩主題 */
-            --glow-color-earth: #00ff7f; /* 螢光綠 */
-            --glow-color-mars: #ff00ff;   /* 品紅 (Magenta) */
-            --glow-color-sun: #ffff00;   /* 電光黃 */
-            --glow-color-primary: #00ffff; /* 電光藍 (Aqua) */
-            --glow-color-accent: #9400d3;  /* 深紫羅蘭 */
-            --color-vibrant-orange: #ff7f50; /* 珊瑚橙 */
-
-            /* 全新背景：深邃午夜藍 */
-            --bg-dark: #020617;    /* 深藍 (slate-950) */
-            --bg-medium: #0f172a;  /* 中藍 (slate-900) */
-            --bg-light: #1e293b;   /* 淺藍 (slate-800) */
-            
-            --text-primary: #f0e6ff;
-            --text-secondary: #94a3b8; /* 配合新背景的次要文字顏色 */
-            --border-color: rgba(148, 163, 184, 0.25); /* 配合新背景的邊框顏色 */
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Roboto', 'Segoe UI', sans-serif;
-            background: radial-gradient(ellipse at top, var(--bg-light) 0%, var(--bg-medium) 50%, var(--bg-dark) 100%);
-            color: var(--text-primary);
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
-        
-        h1, h2, h3, h4, .stat-number, .button, .value-display {
-            font-family: 'Orbitron', sans-serif;
-        }
-
-        .stars {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 1;
-        }
-
-        .star {
-            position: absolute;
-            width: 2px;
-            height: 2px;
-            background: white;
-            border-radius: 50%;
-            animation: twinkle 4s infinite;
-            box-shadow: 0 0 5px #fff, 0 0 8px #fff, 0 0 12px var(--glow-color-primary), 0 0 16px var(--glow-color-mars);
-        }
-
-        @keyframes twinkle {
-            0%, 100% { opacity: 0.2; transform: scale(0.8); filter: hue-rotate(0deg); }
-            50% { opacity: 1; transform: scale(1.2); filter: hue-rotate(90deg); }
-            75% { opacity: 0.8; transform: scale(1); filter: hue-rotate(180deg); }
-        }
-
-        .container {
-            position: relative;
-            z-index: 2;
-            max-width: 1500px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-            animation: fadeInDown 1s ease-out;
-        }
-
-        @keyframes fadeInDown {
-            from { opacity: 0; transform: translateY(-30px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* 動態漸層動畫 */
-        @keyframes gradientShift {
-            0%, 100% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-        }
-
-        .header h1 {
-            font-size: clamp(2.2rem, 5vw, 3.5rem);
-            font-weight: 700;
-            margin-bottom: 10px;
-            background: linear-gradient(45deg, var(--glow-color-mars), var(--color-vibrant-orange), var(--glow-color-sun), var(--glow-color-earth), var(--glow-color-primary), var(--glow-color-accent));
-            background-size: 600% 600%;
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            animation: gradientShift 6s ease infinite;
-            letter-spacing: 2px;
-        }
-
-        .header p {
-            font-size: 1.2rem;
-            color: var(--text-secondary);
-            margin-bottom: 20px;
-        }
-
-        .mission-stats {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-
-        .stat-card {
-            background: rgba(0, 0, 0, 0.2);
-            border: 1px solid var(--border-color);
-            border-radius: 15px;
-            padding: 15px 25px;
-            backdrop-filter: blur(10px);
-            text-align: center;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            box-shadow: 0 0 15px rgba(0,0,0,0.3);
-        }
-
-        .stat-card:hover {
-            transform: translateY(-5px) scale(1.03);
-            box-shadow: 0 5px 25px rgba(0, 255, 127, 0.25);
-        }
-
-        .stat-number {
-            font-size: 1.8rem;
-            font-weight: 700;
-            color: var(--glow-color-earth);
-        }
-
-        .stat-label {
-            font-size: 0.9rem;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .main-content {
-            display: grid;
-            grid-template-columns: 1fr 380px;
-            gap: 30px;
-            margin-bottom: 30px;
-        }
-
-        .simulation-panel {
-            background: rgba(0, 0, 0, 0.2);
-            border: 1px solid var(--border-color);
-            border-radius: 20px;
-            padding: 25px;
-            backdrop-filter: blur(15px);
-            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
-            display: flex;
-            flex-direction: column;
-        }
-
-        #orbitCanvas {
-            width: 100%;
-            height: auto;
-            aspect-ratio: 16 / 10;
-            border-radius: 15px;
-            background: radial-gradient(circle at center, #000511 0%, #000000 100%);
-            border: 2px solid var(--border-color);
-            cursor: grab;
-        }
-
-        #orbitCanvas:active { cursor: grabbing; }
-
-        .control-panel {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        .control-section {
-            background: rgba(0, 0, 0, 0.2);
-            border: 1px solid var(--border-color);
-            border-radius: 15px;
-            padding: 20px;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 0 15px rgba(0,0,0,0.3);
-        }
-
-        .control-section h3 {
-            margin-bottom: 20px;
-            color: var(--glow-color-earth);
-            font-size: 1.4rem;
-            font-weight: 700;
-            text-align: center;
-            letter-spacing: 1px;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 15px;
-        }
-
-        .control-group { margin-bottom: 20px; }
-
-        .control-group label {
-            display: block;
-            margin-bottom: 10px;
-            font-weight: 700;
-            color: var(--glow-color-sun);
-            font-size: 1rem;
-        }
-
-        .control-group input[type="range"] {
-            width: 100%;
-            height: 8px;
-            border-radius: 5px;
-            background: rgba(0, 0, 0, 0.3);
-            outline: none;
-            -webkit-appearance: none;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-
-        .control-group input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 22px;
-            height: 22px;
-            border-radius: 50%;
-            background: linear-gradient(45deg, var(--glow-color-earth), var(--glow-color-primary));
-            cursor: pointer;
-            box-shadow: 0 0 15px var(--glow-color-earth);
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-        .control-group input[type="range"]::-webkit-slider-thumb:hover {
-            transform: scale(1.2);
-            box-shadow: 0 0 25px var(--glow-color-earth), 0 0 35px var(--glow-color-primary);
-        }
-
-        .value-display {
-            font-size: 1rem;
-            color: var(--text-primary);
-            text-align: center;
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 10px;
-            padding: 8px 12px;
-            margin-top: 10px;
-            border: 1px solid var(--border-color);
-        }
-
-        .button-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-        }
-        
-        /* 按鈕的動態漸層效果 */
-        .button, .zoom-btn, .transfer-mode-btn.active {
-            border: none;
-            color: white;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            border: 1px solid rgba(255,255,255,0.2);
-            box-shadow: 0 0 10px rgba(0,0,0,0.5), inset 0 0 5px rgba(255,255,255,0.1);
-            background: linear-gradient(45deg, var(--glow-color-mars), var(--color-vibrant-orange), var(--glow-color-sun), var(--glow-color-earth), var(--glow-color-primary), var(--glow-color-accent));
-            background-size: 400% 400%;
-            animation: gradientShift 8s ease infinite;
-        }
-        
-        .button {
-            padding: 14px;
-            border-radius: 10px;
-            font-weight: 700;
-            font-size: 1rem;
-            letter-spacing: 1px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-
-        .button:hover, .zoom-btn:hover, .transfer-mode-btn.active:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 5px 25px rgba(0, 255, 255, 0.5), inset 0 0 10px rgba(255,255,255,0.2);
-        }
-        .button:active { transform: translateY(0); }
-        .button.gemini {
-            grid-column: 1 / -1;
-        }
-
-        .status-display { padding-top: 15px; }
-        .status-item {
-            display: flex;
-            justify-content: space-between; align-items: center;
-            margin-bottom: 10px; padding: 10px 0;
-            border-bottom: 1px solid var(--border-color);
-            font-size: 1rem;
-        }
-        .status-item:last-child { border-bottom: none; }
-        .status-label { color: var(--text-secondary); }
-        .status-value { font-weight: 700; color: var(--glow-color-sun); }
-
-        .legend {
-            display: flex;
-            justify-content: center; gap: 20px; margin-top: 20px;
-            flex-wrap: wrap; padding: 15px; background: rgba(0,0,0,0.2);
-            border-radius: 15px; border: 1px solid var(--border-color);
-        }
-        .legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; }
-        .legend-color { width: 16px; height: 16px; border-radius: 50%; }
-
-        .progress-bar {
-            width: 100%;
-            height: 10px; background: rgba(0, 0, 0, 0.3);
-            border-radius: 5px; overflow: hidden; margin: 10px 0;
-            border: 1px solid var(--border-color);
-        }
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, var(--glow-color-earth), var(--glow-color-primary));
-            border-radius: 4px; transition: width 0.3s ease;
-            box-shadow: 0 0 10px var(--glow-color-earth);
-        }
-        .trajectory-info h4 { color: var(--glow-color-mars); margin-bottom: 10px; font-size: 1.2rem; }
-
-        .transfer-mode-selector {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            border: 1px solid var(--border-color);
-            border-radius: 10px;
-            padding: 5px;
-            background: rgba(0,0,0,0.2);
-        }
-        .transfer-mode-btn {
-            background: transparent;
-            border: 1px solid transparent;
-            color: var(--text-secondary);
-            padding: 10px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 700;
-            font-size: 0.9rem;
-            transition: all 0.3s ease;
-            text-transform: uppercase;
-        }
-        
-        @media (max-width: 1024px) {
-            .main-content { grid-template-columns: 1fr; }
-            .control-panel { flex-direction: row; flex-wrap: wrap; }
-            .control-section { flex: 1; min-width: 300px; }
-        }
-
-        .notification {
-            position: fixed;
-            top: 20px; right: -100%;
-            background: linear-gradient(45deg, rgba(148, 0, 211, 0.9), rgba(0, 255, 127, 0.9));
-            color: white; padding: 15px 25px;
-            border-radius: 10px;
-            backdrop-filter: blur(10px); transition: right 0.5s ease-in-out;
-            z-index: 1000; border: 1px solid rgba(255, 255, 255, 0.3);
-            font-size: 1.1rem;
-            font-weight: 700;
-        }
-        .notification.show { right: 20px; }
-        .notification.error { background: linear-gradient(45deg, rgba(255, 127, 80, 0.9), rgba(255, 0, 255, 0.9)); }
-
-        .zoom-controls {
-            position: absolute;
-            top: 15px; right: 15px; display: flex;
-            flex-direction: column; gap: 10px;
-        }
-        .zoom-btn {
-            width: 40px;
-            height: 40px; 
-            border-radius: 50%;
-            font-size: 1.5rem; 
-            display: flex; align-items: center; justify-content: center;
-            backdrop-filter: blur(10px);
-            padding: 0;
-        }
-        
-        .modal-overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(8px);
-            display: flex; align-items: center;
-            justify-content: center;
-            z-index: 2000; opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
-        }
-        .modal-overlay.show { opacity: 1; pointer-events: auto; }
-
-        .modal-content {
-            background: rgba(10, 10, 20, 0.9);
-            border: 1px solid var(--border-color);
-            border-radius: 20px; padding: 35px; width: 90%; max-width: 700px;
-            max-height: 85vh; overflow-y: auto; position: relative;
-            transform: scale(0.9);
-            transition: transform 0.3s ease;
-            box-shadow: 0 10px 50px rgba(0,0,0,0.5);
-        }
-        .modal-overlay.show .modal-content { transform: scale(1); }
-        .modal-close {
-            position: absolute;
-            top: 15px; right: 20px; font-size: 2.5rem;
-            color: #fff; cursor: pointer; opacity: 0.7; transition: opacity 0.2s;
-        }
-        .modal-close:hover { opacity: 1; }
-        #analysis-result h3 { color: var(--glow-color-earth); margin-bottom: 20px; font-size: 1.5rem; }
-        #analysis-result p, #analysis-result ul, #analysis-result li { line-height: 1.8; margin-bottom: 15px; font-size: 1.1rem; }
-        #analysis-result ul { list-style-position: inside; padding-left: 10px; }
-        #analysis-result code {
-            background-color: rgba(0,0,0,0.5);
-            padding: 3px 6px;
-            border-radius: 5px; font-family: 'Courier New', Courier, monospace;
-            border: 1px solid var(--border-color);
-        }
-    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="stars"></div>
+    <a class="skip-link" href="#mission-control">跳到任務控制</a>
 
-    <div class="container">
-        <header class="header">
-            <h1>火星任務軌道模擬器</h1>
-            <p>高精度軌道轉移模擬 & AI分析</p>
-            <div class="mission-stats">
-                <div class="stat-card">
-                    <div class="stat-number" id="totalDistance">0</div>
-                    <div class="stat-label">總距離 (百萬km)</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number" id="fuelUsed">0</div>
-                    <div class="stat-label">ΔV (km/s)</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number" id="missionDay">0</div>
-                    <div class="stat-label">任務天數</div>
-                </div>
+    <div class="app-shell">
+        <header class="mission-header">
+            <div class="header-copy">
+                <p class="eyebrow"><span>MARS TRANSFER LAB</span><span>簡化日心二體模型</span></p>
+                <h1>看懂火星<br>發射窗口。</h1>
+                <p class="lede">比較低能量與快速轉移，調整地火相位，觀察一次發射如何從命中窗口變成錯過火星。</p>
+            </div>
+            <div class="header-status" aria-live="polite">
+                <span class="status-light" aria-hidden="true"></span>
+                <span class="status-kicker">MISSION STATE</span>
+                <strong id="headerStatus">等待發射</strong>
             </div>
         </header>
 
-        <main class="main-content">
-            <div class="simulation-panel">
-                <div style="position: relative;">
-                    <canvas id="orbitCanvas"></canvas>
-                    <div class="zoom-controls">
-                        <button class="zoom-btn" onclick="zoomIn()" title="放大">+</button>
-                        <button class="zoom-btn" onclick="zoomOut()" title="縮小">-</button>
-                        <button class="zoom-btn" onclick="resetView()" title="重置視圖">⌂</button>
+        <section class="telemetry-strip" aria-label="任務遙測摘要">
+            <div class="telemetry-item">
+                <span class="telemetry-label">累積航程</span>
+                <strong><span id="totalDistance">0</span><small> 百萬 km</small></strong>
+            </div>
+            <div class="telemetry-item">
+                <span class="telemetry-label">已執行 ΔV</span>
+                <strong><span id="fuelUsed">0.00</span><small> km/s</small></strong>
+            </div>
+            <div class="telemetry-item">
+                <span class="telemetry-label">航程時間</span>
+                <strong><span id="missionDay">0</span><small> 天</small></strong>
+            </div>
+        </section>
+
+        <main class="workspace">
+            <section class="orbit-panel" aria-labelledby="orbit-heading">
+                <div class="panel-heading">
+                    <div>
+                        <p class="section-code">PLOT / 01</p>
+                        <h2 id="orbit-heading">日心轉移軌道</h2>
+                    </div>
+                    <div class="plot-meta">
+                        <span id="modeBadge">HOHMANN</span>
+                        <span>AU SCALE</span>
                     </div>
                 </div>
-                <div class="legend">
-                     <div class="legend-item"><div class="legend-color" style="background: var(--glow-color-sun); box-shadow: 0 0 10px var(--glow-color-sun);"></div><span>太陽</span></div>
-                     <div class="legend-item"><div class="legend-color" style="background: #3b82f6; box-shadow: 0 0 10px var(--glow-color-earth);"></div><span>地球</span></div>
-                     <div class="legend-item"><div class="legend-color" style="background: #94a3b8; box-shadow: 0 0 10px #f1f5f9;"></div><span>月球</span></div>
-                     <div class="legend-item"><div class="legend-color" style="background: #ef4444; box-shadow: 0 0 10px var(--glow-color-mars);"></div><span>火星</span></div>
-                     <div class="legend-item"><div class="legend-color" style="background: #ffffff; box-shadow: 0 0 10px #ffffff;"></div><span>太空船</span></div>
-                     <div class="legend-item"><div class="legend-color" style="background: var(--glow-color-primary); box-shadow: 0 0 10px var(--glow-color-primary);"></div><span>轉移軌道</span></div>
-                </div>
-            </div>
 
-            <aside class="control-panel">
-                <section class="control-section">
-                    <h3>🚀 任務控制</h3>
+                <div class="canvas-frame">
+                    <canvas id="orbitCanvas" role="img" aria-label="地球、火星與太空船的日心軌道圖">
+                        你的瀏覽器不支援 Canvas；請使用現代瀏覽器查看軌道模擬。
+                    </canvas>
+                    <div class="zoom-controls" aria-label="軌道視圖控制">
+                        <button type="button" class="icon-button" id="zoomIn" aria-label="放大軌道視圖" title="放大">＋</button>
+                        <button type="button" class="icon-button" id="zoomOut" aria-label="縮小軌道視圖" title="縮小">−</button>
+                        <button type="button" class="icon-button icon-button-reset" id="resetView" aria-label="重置軌道視圖" title="重置視圖">RESET</button>
+                    </div>
+                    <p class="canvas-hint">拖曳平移 · 滾輪縮放</p>
+                </div>
+
+                <div class="legend" aria-label="軌道圖例">
+                    <span><i class="legend-swatch swatch-sun"></i>太陽</span>
+                    <span><i class="legend-swatch swatch-earth"></i>地球</span>
+                    <span><i class="legend-swatch swatch-mars"></i>火星</span>
+                    <span><i class="legend-swatch swatch-craft"></i>太空船</span>
+                    <span><i class="legend-line"></i>計畫軌道</span>
+                </div>
+
+                <section class="alignment-panel" aria-labelledby="alignment-heading">
+                    <div class="alignment-copy">
+                        <p class="section-code">LAUNCH GEOMETRY</p>
+                        <h3 id="alignment-heading">發射相位對準尺</h3>
+                        <p id="geometryStatus">正在計算發射幾何…</p>
+                    </div>
+                    <div class="alignment-readout">
+                        <div class="phase-values">
+                            <span>目前 <strong id="currentPhase">--°</strong></span>
+                            <span>目標 <strong id="targetPhase">--°</strong></span>
+                        </div>
+                        <div class="alignment-track" aria-hidden="true">
+                            <span class="target-notch"></span>
+                            <span class="alignment-marker" id="alignmentMarker"></span>
+                        </div>
+                        <div class="phase-scale"><span>提早</span><span>窗口</span><span>延後</span></div>
+                    </div>
+                </section>
+            </section>
+
+            <aside class="control-column" id="mission-control">
+                <section class="control-card" aria-labelledby="profile-heading">
+                    <div class="card-heading">
+                        <p class="section-code">CONTROL / 02</p>
+                        <h2 id="profile-heading">任務設定</h2>
+                    </div>
+
                     <div class="control-group">
-                        <label>轉移模式</label>
-                        <div class="transfer-mode-selector">
-                            <button id="mode-hohmann" class="transfer-mode-btn active" onclick="setTransferMode('hohmann')">霍曼轉移</button>
-                            <button id="mode-fast" class="transfer-mode-btn" onclick="setTransferMode('fast')">快速轉移</button>
+                        <span class="control-label" id="transfer-mode-label">轉移模式</span>
+                        <div class="mode-selector" role="group" aria-labelledby="transfer-mode-label">
+                            <button type="button" class="mode-button is-active" id="mode-hohmann" data-mode="hohmann" aria-pressed="true">
+                                <span>霍曼</span><small>259 天</small>
+                            </button>
+                            <button type="button" class="mode-button" id="mode-fast" data-mode="fast" aria-pressed="false">
+                                <span>快速</span><small>156 天</small>
+                            </button>
+                        </div>
+                        <p class="control-help" id="modeSummary"></p>
+                    </div>
+
+                    <div class="control-group">
+                        <div class="label-row">
+                            <label for="launchWindow">發射日</label>
+                            <output id="launchValue" for="launchWindow">第 684 天</output>
+                        </div>
+                        <input type="range" id="launchWindow" min="0" max="780" step="1" value="684">
+                        <div class="range-extents"><span>會合週期 0</span><span>780 天</span></div>
+                        <button type="button" class="text-button" id="findWindow">對準最佳窗口 <span aria-hidden="true">→</span></button>
+                    </div>
+
+                    <div class="control-group">
+                        <div class="label-row">
+                            <label for="speedSlider">模擬速度</label>
+                            <output id="speedValue" for="speedSlider">24×</output>
+                        </div>
+                        <input type="range" id="speedSlider" min="1" max="100" step="1" value="24">
+                        <div class="range-extents"><span>1×</span><span>100×</span></div>
+                    </div>
+
+                    <dl class="profile-metrics" id="missionParams">
+                        <div><dt>飛行時間</dt><dd>259 天</dd></div>
+                        <div><dt>預計總 ΔV</dt><dd>5.60 km/s</dd></div>
+                    </dl>
+
+                    <div class="primary-actions">
+                        <button type="button" class="primary-button" id="startTransfer">開始轉移</button>
+                        <button type="button" class="secondary-button" id="pauseButton" disabled>暫停</button>
+                    </div>
+                    <button type="button" class="reset-button" id="resetSimulation">重置任務</button>
+                </section>
+
+                <section class="control-card status-card" aria-labelledby="status-heading">
+                    <div class="card-heading card-heading-inline">
+                        <div>
+                            <p class="section-code">TELEMETRY / 03</p>
+                            <h2 id="status-heading">即時狀態</h2>
+                        </div>
+                        <span class="state-tag" id="stateTag">STANDBY</span>
+                    </div>
+
+                    <dl class="status-list">
+                        <div><dt>任務狀態</dt><dd id="missionStatus">等待發射</dd></div>
+                        <div><dt>距離太陽</dt><dd id="distance">1.00 AU</dd></div>
+                        <div><dt>日心速度</dt><dd id="velocity">29.78 km/s</dd></div>
+                        <div><dt>到火星距離</dt><dd id="marsDistance">-- AU</dd></div>
+                    </dl>
+
+                    <div class="progress-block">
+                        <div class="label-row"><span>軌道進度</span><strong id="progressText">0%</strong></div>
+                        <div class="progress-track" id="progressBar" role="progressbar" aria-label="軌道進度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                            <span id="progressFill"></span>
                         </div>
                     </div>
-                     <div class="control-group">
-                        <label>發射日期 (相對於初始)</label>
-                        <input type="range" id="launchWindow" min="0" max="779" step="1" value="684">
-                        <div class="value-display" id="launchValue">第 684 天</div>
-                    </div>
-                     <div class="control-group">
-                        <label>模擬速度</label>
-                        <input type="range" id="speedSlider" min="1" max="100" step="1" value="10">
-                        <div class="value-display" id="speedValue">10x</div>
-                     </div>
-                    <div class="button-grid">
-                        <button class="button" onclick="findOptimalWindow()">
-                            🛰️ 尋找窗口
-                        </button>
-                        <button class="button" onclick="startTransfer()">
-                            🚀 開始轉移
-                        </button>
-                        <button class="button" onclick="togglePause()" id="pauseButton">
-                            <span id="pauseIcon">▶️</span><span id="pauseText"> 繼續</span>
-                        </button>
-                        <button class="button" onclick="resetSimulation()">
-                            🔄 重置模擬
-                        </button>
-                    </div>
+
+                    <button type="button" class="brief-button" id="generateBrief" hidden>開啟任務簡報</button>
                 </section>
 
-                <section class="control-section">
-                    <h3>📊 任務狀態</h3>
-                    <div id="mission-params"></div>
-                    <div class="status-display">
-                        <div class="status-item"><span class="status-label">任務狀態</span><span class="status-value" id="missionStatus">等待發射</span></div>
-                        <div class="status-item"><span class="status-label">經過時間</span><span class="status-value" id="timeElapsed">0 天</span></div>
-                        <div class="status-item"><span class="status-label">距離太陽</span><span class="status-value" id="distance">1.00 AU</span></div>
-                        <div class="status-item"><span class="status-label">相對速度</span><span class="status-value" id="velocity">29.78 km/s</span></div>
-                        <div class="status-item"><span class="status-label">到火星距離</span><span class="status-value" id="marsDistance">-- AU</span></div>
-                    </div>
-                    <div class="trajectory-info">
-                        <h4>軌道進度</h4>
-                        <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width: 0%"></div></div>
-                        <div class="status-item"><span class="status-label">完成度</span><span class="status-value" id="progressText">0%</span></div>
-                    </div>
-                    <div id="analysis-section" style="display: none; margin-top: 20px;">
-                        <button class="button gemini" id="generate-analysis-btn" onclick="generateMissionAnalysis()">
-                            🔮 產生任務分析報告
-                        </button>
-                        <div id="analysis-loading" style="display: none; text-align: center; margin-top: 10px; opacity: 0.8;">正在聯繫任務控制AI...</div>
-                    </div>
-                </section>
+                <details class="model-note">
+                    <summary>模型範圍與限制</summary>
+                    <p>本工具採用共面圓形行星軌道與預設轉移橢圓，用於理解發射相位與 ΔV 取捨；未納入軌道傾角、攝動、有限推力或真實星曆，不可用於實際任務導航。</p>
+                </details>
             </aside>
         </main>
+
+        <footer class="site-footer">
+            <span>MARS TRANSFER LAB</span>
+            <span>所有計算於瀏覽器本機完成，不需 API key。</span>
+        </footer>
     </div>
 
-    <div id="analysis-modal" class="modal-overlay">
-        <div class="modal-content">
-            <span class="modal-close" onclick="closeModal()">&times;</span>
-            <div id="analysis-result"></div>
+    <dialog class="mission-dialog" id="missionDialog" aria-labelledby="briefTitle">
+        <div class="dialog-topline">
+            <p class="section-code">POST-FLIGHT BRIEF</p>
+            <button type="button" class="dialog-close" id="closeDialog" aria-label="關閉任務簡報">關閉</button>
         </div>
-    </div>
+        <div id="briefContent"></div>
+    </dialog>
 
-    <div class="notification" id="notification"></div>
+    <div class="notification" id="notification" role="status" aria-live="polite"></div>
 
-    <script>
-        // --- DOM 元素 ---
-        const getById = (id) => document.getElementById(id);
-        const canvas = getById('orbitCanvas');
-        const ctx = canvas.getContext('2d');
-        const notificationEl = getById('notification');
-        const analysisModal = getById('analysis-modal');
-        const analysisResult = getById('analysis-result');
-        const pauseButton = getById('pauseButton');
-        const pauseIcon = getById('pauseIcon');
-        const pauseText = getById('pauseText');
-
-        // --- 物理常數 ---
-        const G = 6.67430e-11; // 萬有引力常數
-        const M_SUN = 1.989e30; // 太陽質量 (kg)
-        const AU_M = 1.496e11; // 天文單位 (m)
-        const EARTH_ORBIT_R_AU = 1.0; // 地球軌道半徑 (AU)
-        const MARS_ORBIT_R_AU = 1.524; // 火星軌道半徑 (AU)
-        const EARTH_PERIOD = 365.25; // 地球公轉週期 (天)
-        const MARS_PERIOD = 687; // 火星公轉週期 (天)
-
-        // --- 轉移模式參數 ---
-        const hohmann_a = (EARTH_ORBIT_R_AU + MARS_ORBIT_R_AU) / 2 * AU_M;
-        const hohmann_e = (MARS_ORBIT_R_AU - EARTH_ORBIT_R_AU) / (MARS_ORBIT_R_AU + EARTH_ORBIT_R_AU);
-        const transferModes = {
-            hohmann: {
-                name: '霍曼轉移 (Hohmann)',
-                duration: 259,
-                deltaV_injection: 2.95,
-                deltaV_insertion: 2.65,
-                 a: hohmann_a,
-                e: hohmann_e,
-                optimalLaunchDay: 684,
-                transferAngle: 180 
-            },
-            fast: {
-                name: '快速轉移 (Fast)',
-                duration: 156,      
-                deltaV_injection: 6.2,  
-                deltaV_insertion: 5.2,
-                a: 1.4 * AU_M,    
-                e: 0.2857,        
-                optimalLaunchDay: 689, 
-                transferAngle: 123.2  
-            }
-        };
-        // 預先計算弧度
-        for (const mode in transferModes) {
-            transferModes[mode].transferAngleRad = transferModes[mode].transferAngle * Math.PI / 180;
-        }
-
-        let currentTransferMode = 'hohmann';
-        // --- 模擬狀態 ---
-        let simTime = 0, animationSpeed = 10, launchDay = transferModes.hohmann.optimalLaunchDay, orbitalAccuracy = 100;
-        let isPaused = true, animationFrameId;
-        let spacecraft = {}, missionOutcome = {};
-        // --- 畫布與視圖狀態 ---
-        const resolution = 1200;
-        canvas.width = resolution;
-        canvas.height = (resolution / 16) * 10;
-        let scale = 1.0, panOffset = { x: 0, y: 0 }, isDragging = false, lastMousePos = { x: 0, y: 0 };
-        
-        function resetSpacecraftState() {
-            spacecraft = {
-                phase: 'waiting',
-                transferProgress: 0,
-                startAngle: 0,
-                pos: { x: 0, y: 0 },
-                trail: [],
-                totalDistanceKm: 0,
-                deltaV: 0
-            };
-            missionOutcome = {};
-            getById('analysis-section').style.display = 'none';
-        }
-
-        function showNotification(message, type = 'success') {
-            notificationEl.textContent = message;
-            notificationEl.className = `notification ${type} show`;
-            setTimeout(() => notificationEl.classList.remove('show'), 4000);
-        }
-
-        // --- 物理與軌道力學計算 ---
-        const getPlanetPos = (radiusAU, period, time) => {
-            const angle = (time / period) * 2 * Math.PI;
-            return { x: radiusAU * Math.cos(angle), y: radiusAU * Math.sin(angle), angle };
-        };
-        const getTransferPos = (progress, startAngle) => {
-            const mode = transferModes[currentTransferMode];
-            const trueAnomaly = progress * mode.transferAngleRad;
-            const r_current_m = mode.a * (1 - mode.e**2) / (1 + mode.e * Math.cos(trueAnomaly));
-            const totalAngle = startAngle + trueAnomaly;
-            return {
-                x: (r_current_m / AU_M) * Math.cos(totalAngle),
-                y: (r_current_m / AU_M) * Math.sin(totalAngle),
-                r_au: r_current_m / AU_M
-            };
-        };
-
-        const getSpacecraftVelocity = (radiusAU) => {
-            const r_m = radiusAU * AU_M;
-            const v_ms = Math.sqrt(G * M_SUN * (2 / r_m - 1 / transferModes[currentTransferMode].a));
-            return v_ms / 1000;
-        };
-        const getDistance = (p1, p2) => Math.sqrt((p1.x - p2.x)**2 + (p1.y - p2.y)**2);
-
-        // --- 繪圖函數 ---
-        const worldToScreen = (worldPos, transform) => ({
-            x: transform.x + worldPos.x * transform.scale,
-            y: transform.y + worldPos.y * transform.scale,
-        });
-
-        function drawEarthWithMoon(earthPos, transform, time) {
-            const screenPos = worldToScreen(earthPos, transform);
-            const earthRadius = 6 * scale;
-
-            // Draw Earth
-            ctx.shadowBlur = earthRadius * 2.5;
-            ctx.shadowColor = 'var(--glow-color-earth)';
-            
-            // Blue ocean
-            ctx.beginPath();
-            ctx.arc(screenPos.x, screenPos.y, earthRadius, 0, 2 * Math.PI);
-            ctx.fillStyle = '#3b82f6'; // 藍色
-            ctx.fill();
-
-            // Green continents
-            ctx.fillStyle = '#22c55e'; // 綠色
-            ctx.save();
-            ctx.translate(screenPos.x, screenPos.y);
-            ctx.rotate(earthPos.angle * 2); // 讓大陸旋轉
-            ctx.beginPath();
-            ctx.ellipse(0, earthRadius * 0.3, earthRadius * 0.8, earthRadius * 0.4, 0.5, 0, 2 * Math.PI);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.ellipse(earthRadius * 0.5, -earthRadius * 0.5, earthRadius * 0.3, earthRadius * 0.2, -0.8, 0, 2 * Math.PI);
-            ctx.fill();
-            ctx.restore();
-            
-            ctx.shadowBlur = 0;
-
-            // --- 繪製月球 ---
-            const MOON_ORBIT_R_AU = 0.08; // 為了可視性而誇大的月球軌道半徑
-            const MOON_PERIOD = 27.3;
-            const moonAngle = (time / MOON_PERIOD) * 2 * Math.PI * 10; // 加快月球公轉以利觀察
-            const moonPos = {
-                x: earthPos.x + MOON_ORBIT_R_AU * Math.cos(moonAngle),
-                y: earthPos.y + MOON_ORBIT_R_AU * Math.sin(moonAngle)
-            };
-            const moonScreenPos = worldToScreen(moonPos, transform);
-            const moonRadius = 2 * scale;
-
-            // 月球軌道
-            ctx.beginPath();
-            ctx.arc(screenPos.x, screenPos.y, MOON_ORBIT_R_AU * transform.scale, 0, 2 * Math.PI);
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-            ctx.lineWidth = 1;
-            ctx.stroke();
-
-            // 月球本體
-            ctx.shadowBlur = moonRadius * 2;
-            ctx.shadowColor = '#f1f5f9';
-            ctx.beginPath();
-            ctx.arc(moonScreenPos.x, moonScreenPos.y, moonRadius, 0, 2 * Math.PI);
-            ctx.fillStyle = '#94a3b8'; // 灰色
-            ctx.fill();
-            ctx.shadowBlur = 0;
-        }
-
-        function drawMars(marsPos, transform) {
-            const screenPos = worldToScreen(marsPos, transform);
-            const marsRadius = 5 * scale;
-
-            ctx.shadowBlur = marsRadius * 2.5;
-            ctx.shadowColor = 'var(--glow-color-mars)';
-
-            // 紅色基底
-            ctx.beginPath();
-            ctx.arc(screenPos.x, screenPos.y, marsRadius, 0, 2 * Math.PI);
-            ctx.fillStyle = '#ef4444'; // 紅色
-            ctx.fill();
-
-            // 暗色斑塊
-            ctx.fillStyle = 'rgba(185, 28, 28, 0.5)';
-            ctx.save();
-            ctx.translate(screenPos.x, screenPos.y);
-            ctx.rotate(marsPos.angle * 1.5);
-            ctx.beginPath();
-            ctx.ellipse(0, marsRadius * 0.4, marsRadius * 0.9, marsRadius * 0.5, 0.2, 0, 2 * Math.PI);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.ellipse(-marsRadius * 0.6, -marsRadius * 0.2, marsRadius * 0.2, marsRadius * 0.3, 1, 0, 2 * Math.PI);
-            ctx.fill();
-            ctx.restore();
-
-            ctx.shadowBlur = 0;
-        }
-
-        function drawSpacecraft(scPos, transform) {
-            const screenPos = worldToScreen(scPos, transform);
-            const size = 8 * scale;
-
-            let angle = 0;
-            // 如果在轉移中，使其指向前進方向
-            if (spacecraft.phase === 'transfer' && spacecraft.trail.length > 1) {
-                const prevPos = spacecraft.trail[spacecraft.trail.length - 2];
-                angle = Math.atan2(scPos.y - prevPos.y, scPos.x - prevPos.x);
-            } else {
-                // 否則，使其有一個相對於太陽的默認“停泊”方向
-                angle = Math.atan2(scPos.y, scPos.x) + Math.PI / 2;
-            }
-
-            ctx.save();
-            ctx.translate(screenPos.x, screenPos.y);
-            ctx.rotate(angle);
-            
-            ctx.shadowBlur = 10 * scale;
-            ctx.shadowColor = 'white';
-
-            // 火箭本體
-            ctx.fillStyle = '#e2e8f0';
-            ctx.beginPath();
-            ctx.moveTo(size, 0); // 鼻錐
-            ctx.lineTo(-size / 2, size / 2.5); // 機翼
-            ctx.lineTo(-size / 2, -size / 2.5); // 另一邊機翼
-            ctx.closePath();
-            ctx.fill();
-
-            // 只在轉移階段顯示火焰
-            if (spacecraft.phase === 'transfer') {
-                ctx.fillStyle = `rgba(255, 127, 80, ${0.7 + Math.random() * 0.3})`;
-                ctx.beginPath();
-                ctx.moveTo(-size / 2, 0);
-                ctx.lineTo(-size * 1.2, size / 3);
-                ctx.lineTo(-size / 1.5, 0);
-                ctx.lineTo(-size * 1.2, -size / 3);
-                ctx.closePath();
-                ctx.fill();
-            }
-            
-            ctx.shadowBlur = 0;
-            ctx.restore();
-        }
-
-        function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            const transform = {
-                x: canvas.width / 2 + panOffset.x,
-                y: canvas.height / 2 + panOffset.y,
-                scale: (canvas.width / 5.5) * scale
-            };
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-            ctx.lineWidth = 1;
-            for (let i = 1; i <= 10; i++) {
-                ctx.beginPath();
-                ctx.arc(transform.x, transform.y, i * 0.5 * transform.scale, 0, 2 * Math.PI);
-                ctx.stroke();
-            }
-
-            const drawOrbit = (radius, color) => {
-                ctx.beginPath();
-                ctx.arc(transform.x, transform.y, radius * transform.scale, 0, 2 * Math.PI);
-                ctx.strokeStyle = color;
-                ctx.lineWidth = 1.5;
-                ctx.shadowColor = color;
-                ctx.shadowBlur = 10;
-                ctx.stroke();
-                ctx.shadowBlur = 0;
-            };
-            drawOrbit(EARTH_ORBIT_R_AU, 'rgba(0, 255, 127, 0.3)');
-            drawOrbit(MARS_ORBIT_R_AU, 'rgba(255, 0, 255, 0.3)');
-            const launchPosAngle = spacecraft.phase === 'waiting' 
-                ? getPlanetPos(EARTH_ORBIT_R_AU, EARTH_PERIOD, launchDay).angle 
-                : spacecraft.startAngle;
-            ctx.beginPath();
-            ctx.strokeStyle = 'rgba(0, 255, 255, 0.5)';
-            ctx.lineWidth = 2;
-            ctx.setLineDash([5, 10]);
-            const mode = transferModes[currentTransferMode];
-            for (let i = 0; i <= orbitalAccuracy; i++) {
-                const progress = i / orbitalAccuracy;
-                const trueAnomaly = progress * mode.transferAngleRad;
-                const r_current_m = mode.a * (1 - mode.e**2) / (1 + mode.e * Math.cos(trueAnomaly));
-                const totalAngle = launchPosAngle + trueAnomaly;
-                const pos = {
-                    x: (r_current_m / AU_M) * Math.cos(totalAngle),
-                    y: (r_current_m / AU_M) * Math.sin(totalAngle)
-                };
-                const screenPos = worldToScreen(pos, transform);
-                i === 0 ? ctx.moveTo(screenPos.x, screenPos.y) : ctx.lineTo(screenPos.x, screenPos.y);
-            }
-            ctx.stroke();
-            ctx.setLineDash([]);
-            if (spacecraft.trail.length > 1) {
-                ctx.beginPath();
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
-                ctx.lineWidth = 2;
-                ctx.moveTo(...Object.values(worldToScreen(spacecraft.trail[0], transform)));
-                for (let i = 1; i < spacecraft.trail.length; i++) {
-                    ctx.lineTo(...Object.values(worldToScreen(spacecraft.trail[i], transform)));
-                }
-                ctx.stroke();
-            }
-
-            // 繪製太陽
-            const sunScreenPos = worldToScreen({x:0, y:0}, transform);
-            ctx.shadowBlur = 8 * scale * 2.5;
-            ctx.shadowColor = 'var(--glow-color-sun)';
-            ctx.beginPath();
-            ctx.arc(sunScreenPos.x, sunScreenPos.y, 8 * scale, 0, 2 * Math.PI);
-            ctx.fillStyle = 'var(--glow-color-sun)';
-            ctx.fill();
-            ctx.shadowBlur = 0;
-            
-            const missionDuration = (spacecraft.phase !== 'waiting') ? simTime : 0;
-            const currentTotalTime = launchDay + missionDuration;
-
-            const earthPos = getPlanetPos(EARTH_ORBIT_R_AU, EARTH_PERIOD, currentTotalTime);
-            const marsPos = getPlanetPos(MARS_ORBIT_R_AU, MARS_PERIOD, currentTotalTime);
-            let scPos = spacecraft.phase === 'waiting' ? earthPos : spacecraft.pos;
-
-            // 使用新函數繪製天體
-            drawEarthWithMoon(earthPos, transform, currentTotalTime);
-            drawMars(marsPos, transform);
-            drawSpacecraft(scPos, transform);
-        }
-
-        // --- 主模擬循環 ---
-        function update(deltaTime) {
-            if (isPaused) return;
-            const timeStep = animationSpeed * (deltaTime / 1000) * 2;
-            simTime += timeStep;
-            const mode = transferModes[currentTransferMode];
-            if (spacecraft.phase === 'transfer') {
-                spacecraft.transferProgress = Math.min(simTime / mode.duration, 1);
-                const lastPos = spacecraft.pos;
-                spacecraft.pos = getTransferPos(spacecraft.transferProgress, spacecraft.startAngle);
-                spacecraft.totalDistanceKm += getDistance(lastPos, spacecraft.pos) * AU_M / 1e6;
-                if (spacecraft.trail.length > 200) spacecraft.trail.shift();
-                spacecraft.trail.push(spacecraft.pos);
-
-                if (spacecraft.transferProgress >= 1) {
-                    const arrivalTime = launchDay + mode.duration;
-                    const marsPosAtArrival = getPlanetPos(MARS_ORBIT_R_AU, MARS_PERIOD, arrivalTime);
-                    const arrivalError = getDistance(spacecraft.pos, marsPosAtArrival);
-                    endMission(arrivalError < 0.05 ? 'arrived' : 'failed', arrivalError);
-                    return; // 結束後直接 return，避免繼續 updateUI
-                }
-            }
-            updateUI();
-        }
-
-        // --- 更新UI顯示 ---
-        function updateUI() {
-            const mode = transferModes[currentTransferMode];
-            
-            const missionDuration = (spacecraft.phase !== 'waiting') ? simTime : 0;
-            const currentTotalTime = launchDay + missionDuration;
-            
-            const earthPos = getPlanetPos(EARTH_ORBIT_R_AU, EARTH_PERIOD, currentTotalTime);
-            let scPos = spacecraft.phase === 'waiting' ? earthPos : spacecraft.pos;
-            
-            getById('missionDay').textContent = Math.floor(currentTotalTime);
-            getById('timeElapsed').textContent = `${Math.floor(simTime)} 天`;
-            getById('totalDistance').textContent = spacecraft.totalDistanceKm.toFixed(0);
-            getById('fuelUsed').textContent = spacecraft.deltaV.toFixed(2);
-
-            let statusText, distanceAU, velocityKms;
-            switch(spacecraft.phase) {
-                case 'waiting':
-                    statusText = '等待發射'; distanceAU = EARTH_ORBIT_R_AU; velocityKms = 29.78; break;
-                case 'transfer':
-                    statusText = `🚀 ${mode.name}中...`; distanceAU = getDistance({x:0,y:0}, scPos); velocityKms = getSpacecraftVelocity(distanceAU); break;
-                case 'arrived':
-                    statusText = '✅ 成功抵達火星'; distanceAU = MARS_ORBIT_R_AU; velocityKms = 24.07; break;
-                case 'failed':
-                    statusText = '❌ 錯過目標'; distanceAU = getDistance({x:0,y:0}, scPos); velocityKms = getSpacecraftVelocity(distanceAU); break;
-            }
-            const marsPos = getPlanetPos(MARS_ORBIT_R_AU, MARS_PERIOD, currentTotalTime);
-            getById('missionStatus').textContent = statusText;
-            getById('distance').textContent = `${distanceAU.toFixed(2)} AU`;
-            getById('velocity').textContent = `${velocityKms.toFixed(2)} km/s`;
-            getById('marsDistance').textContent = `${getDistance(scPos, marsPos).toFixed(2)} AU`;
-            getById('progressFill').style.width = `${spacecraft.transferProgress * 100}%`;
-            getById('progressText').textContent = `${Math.floor(spacecraft.transferProgress * 100)}%`;
-        }
-        
-        function updateMissionParamsUI() {
-            const mode = transferModes[currentTransferMode];
-            getById('mission-params').innerHTML = `
-                <div class="param-item"><span>預計飛行時間</span><span>${mode.duration} 天</span></div>
-                <div class="param-item"><span>預計總 ΔV</span><span>${(mode.deltaV_injection + mode.deltaV_insertion).toFixed(2)} km/s</span></div>
-            `;
-        }
-
-        let lastTimestamp = 0;
-        function animate(timestamp) {
-            if (!lastTimestamp) lastTimestamp = timestamp;
-            const deltaTime = timestamp - lastTimestamp;
-            lastTimestamp = timestamp;
-            if (!isNaN(deltaTime)) update(deltaTime);
-            draw();
-            animationFrameId = requestAnimationFrame(animate);
-        }
-
-        // --- 控制與事件處理 ---
-        function setTransferMode(mode) {
-            currentTransferMode = mode;
-            document.querySelectorAll('.transfer-mode-btn').forEach(btn => btn.classList.remove('active'));
-            getById(`mode-${mode}`).classList.add('active');
-
-            // 切換轉移模式時同步更新發射窗口，避免使用上一模式的發射時間
-            launchDay = transferModes[mode].optimalLaunchDay;
-            const launchInput = getById('launchWindow');
-            launchInput.value = launchDay;
-            getById('launchValue').textContent = `第 ${launchDay} 天`;
-
-            updateMissionParamsUI();
-            if (spacecraft.phase !== 'waiting') resetSimulation();
-            draw();
-        }
-
-        function startTransfer() {
-            if (spacecraft.phase !== 'waiting') return showNotification('請先重置模擬', 'error');
-            const mode = transferModes[currentTransferMode];
-            simTime = 0;
-            const startPos = getPlanetPos(EARTH_ORBIT_R_AU, EARTH_PERIOD, launchDay);
-            
-            spacecraft.phase = 'transfer';
-            spacecraft.startAngle = startPos.angle;
-            spacecraft.pos = startPos;
-            spacecraft.trail = [startPos];
-            spacecraft.deltaV = mode.deltaV_injection;
-
-            isPaused = false;
-            pauseIcon.textContent = '⏸️';
-            pauseText.textContent = ' 暫停';
-            showNotification(`🚀 ${mode.name}注入成功！`, 'success');
-            updateUI();
-        }
-
-        function endMission(status, arrivalError = 0) {
-            spacecraft.phase = status;
-            spacecraft.transferProgress = 1; // 強制完成度為 1，畫面停留在完成
-            isPaused = true;
-            pauseIcon.textContent = '▶️';
-            pauseText.textContent = ' 繼續';
-
-            const mode = transferModes[currentTransferMode];
-            if (status === 'arrived') {
-                spacecraft.deltaV += mode.deltaV_insertion;
-                showNotification('✅ 任務成功！成功抵達火星軌道。', 'success');
-            } else {
-                showNotification(`❌ 任務失敗！錯過火星 ${arrivalError.toFixed(3)} AU。`, 'error');
-            }
-            missionOutcome = { status, launchDay, arrivalError, deltaV: spacecraft.deltaV, mode: mode.name };
-            getById('analysis-section').style.display = 'block';
-        }
-
-        function resetSimulation(isInitial = false) {
-            simTime = 0;
-            resetSpacecraftState();
-            panOffset = { x: 0, y: 0 };
-            scale = 1.0;
-            isPaused = true;
-            pauseIcon.textContent = '▶️';
-            pauseText.textContent = ' 繼續';
-            if (!isInitial) {
-                showNotification('🔄 模擬已重置。', 'success');
-            }
-            updateUI();
-            draw();
-        }
-        
-        function togglePause() {
-            if (spacecraft.phase !== 'transfer') return showNotification('只有在轉移過程中才能暫停/繼續。', 'error');
-            isPaused = !isPaused;
-            pauseIcon.textContent = isPaused ? '▶️' : '⏸️';
-            pauseText.textContent = isPaused ? ' 繼續' : ' 暫停';
-            if (!isPaused) lastTimestamp = performance.now();
-        }
-
-        function findOptimalWindow() {
-            const optimalDay = transferModes[currentTransferMode].optimalLaunchDay;
-            launchDay = optimalDay;
-            getById('launchWindow').value = optimalDay;
-            getById('launchValue').textContent = `第 ${optimalDay} 天`;
-            showNotification(`🛰️ 已為${transferModes[currentTransferMode].name}設定最佳窗口`, 'success');
-            if (spacecraft.phase !== 'waiting') resetSimulation();
-            draw();
-        }
-
-        // 視圖控制
-        const zoomIn = () => { scale *= 1.2; draw(); };
-        const zoomOut = () => { scale /= 1.2; draw(); };
-        const resetView = () => { scale = 1.0; panOffset = { x: 0, y: 0 }; draw(); };
-        
-        // 輸入監聽器
-        getById('speedSlider').addEventListener('input', (e) => {
-            animationSpeed = parseFloat(e.target.value);
-            getById('speedValue').textContent = `${animationSpeed.toFixed(0)}x`;
-        });
-        getById('launchWindow').addEventListener('input', (e) => {
-            launchDay = parseInt(e.target.value);
-            getById('launchValue').textContent = `第 ${launchDay} 天`;
-            if (spacecraft.phase === 'waiting') draw();
-        });
-        
-        // 畫布平移/縮放監聽器
-        const handlePanStart = (x, y) => { isDragging = true; lastMousePos = { x, y }; canvas.style.cursor = 'grabbing'; };
-        const handlePanMove = (x, y) => {
-            if (!isDragging) return;
-            panOffset.x += x - lastMousePos.x;
-            panOffset.y += y - lastMousePos.y;
-            lastMousePos = { x, y };
-            draw();
-        };
-        const handlePanEnd = () => { isDragging = false; canvas.style.cursor = 'grab'; };
-        canvas.addEventListener('mousedown', (e) => handlePanStart(e.clientX, e.clientY));
-        canvas.addEventListener('mousemove', (e) => handlePanMove(e.clientX, e.clientY));
-        canvas.addEventListener('mouseup', handlePanEnd);
-        canvas.addEventListener('mouseleave', handlePanEnd);
-        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handlePanStart(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
-        canvas.addEventListener('touchmove', (e) => { e.preventDefault(); handlePanMove(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
-        canvas.addEventListener('touchend', (e) => { e.preventDefault(); handlePanEnd(); });
-        canvas.addEventListener('wheel', (e) => { e.preventDefault(); scale *= e.deltaY < 0 ? 1.1 : 0.9; draw(); });
-
-        // --- Gemini AI 分析 ---
-        const closeModal = () => analysisModal.classList.remove('show');
-        async function generateMissionAnalysis() {
-            if (!missionOutcome.status) return showNotification('沒有可供分析的任務數據。', 'error');
-
-            getById('generate-analysis-btn').disabled = true;
-            getById('analysis-loading').style.display = 'block';
-            analysisResult.innerHTML = '';
-
-            const { status, launchDay: ld, arrivalError, deltaV, mode } = missionOutcome;
-            const prompt = `作為一名資深的航太任務分析師，請針對一次火星轉移任務撰寫一份簡潔的分析報告。
-            任務數據如下：
-            - 任務結果：${status === 'arrived' ? '成功' : '失敗'}
-            - 轉移模式：${mode}
-            - 發射時機：在地球與火星的會合週期中的第 ${ld} 天發射。
-            - 總Delta-V消耗：${deltaV.toFixed(2)} km/s
-            - ${status === 'failed' ? `抵達時與火星的距離誤差：${arrivalError.toFixed(3)} AU` : `飛行時間：${transferModes[currentTransferMode].duration} 天`}
-            
-            請根據這些數據，以專業但易於理解的 Markdown 格式分析：
-            1. 點評這次任務的表現（成功或失敗的關鍵因素是什麼？）。
-            2. 分析所選的【${mode}】模式的優缺點（效率、時間、燃料消耗）。
-            3. 對未來的火星任務提出一項具體的優化建議。`;
-
-            try {
-                const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
-                const apiKey = ""; // 由環境提供
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                if (!response.ok) throw new Error(`API request failed: ${response.status}`);
-                const result = await response.json();
-                
-                if (result.candidates && result.candidates.length > 0 && result.candidates[0].content.parts[0].text) {
-                    const text = result.candidates[0].content.parts[0].text;
-                    analysisResult.innerHTML = marked.parse(text);
-                } else {
-                    throw new Error("Invalid response structure from API.");
-                }
-                analysisModal.classList.add('show');
-            } catch (error) {
-                console.error("生成分析時出錯:", error);
-                analysisResult.innerHTML = `<p style="color: #ff6b6b;">無法生成分析報告。請檢查網絡連接或稍後再試。</p>`;
-                analysisModal.classList.add('show');
-            } finally {
-                getById('generate-analysis-btn').disabled = false;
-                getById('analysis-loading').style.display = 'none';
-            }
-        }
-
-        // --- 初始化 ---
-        window.onload = () => {
-            const starsContainer = document.querySelector('.stars');
-            for (let i = 0; i < 200; i++) {
-                const star = document.createElement('div');
-                star.className = 'star';
-                star.style.top = `${Math.random() * 100}%`;
-                star.style.left = `${Math.random() * 100}%`;
-                star.style.animationDelay = `${Math.random() * 4}s`;
-                star.style.animationDuration = `${3 + Math.random() * 5}s`;
-                starsContainer.appendChild(star);
-            }
-            getById('launchWindow').value = launchDay;
-            getById('launchValue').textContent = `第 ${launchDay} 天`;
-            getById('speedSlider').value = animationSpeed;
-            getById('speedValue').textContent = `${animationSpeed}x`;
-            
-            setTransferMode('hohmann');
-            resetSimulation(true);
-            requestAnimationFrame(animate);
-        };
-    </script>
+    <script type="module" src="app.mjs"></script>
 </body>
 </html>
