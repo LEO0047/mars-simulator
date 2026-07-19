@@ -36,6 +36,7 @@ const palette = {
     marsLight: '#ef8a68',
     marsDark: '#8f392a',
     vector: '#62c8c9',
+    amber: '#e7b65a',
     success: '#77c69a',
     danger: '#e87967',
 };
@@ -52,6 +53,34 @@ let notificationTimer;
 let needsRedraw = true;
 let view = { zoom: 1, panX: 0, panY: 0 };
 let pointerState = { active: false, x: 0, y: 0, id: null };
+
+const atlasSprites = {
+    sun: { x: 0, y: 0, width: 512, height: 512 },
+    earth: { x: 512, y: 0, width: 512, height: 512 },
+    mars: { x: 1024, y: 0, width: 512, height: 512 },
+    moon: { x: 0, y: 512, width: 512, height: 512 },
+    spacecraft: { x: 512, y: 512, width: 512, height: 512 },
+};
+
+const visualAssets = {
+    background: loadVisualAsset('assets/generated/deep-space-background.png'),
+    atlas: loadVisualAsset('assets/generated/celestial-atlas.png'),
+};
+
+function loadVisualAsset(source) {
+    const image = new Image();
+    const asset = { image, ready: false, failed: false };
+    image.addEventListener('load', () => {
+        asset.ready = true;
+        needsRedraw = true;
+    });
+    image.addEventListener('error', () => {
+        asset.failed = true;
+        needsRedraw = true;
+    });
+    image.src = source;
+    return asset;
+}
 
 function createSpacecraft() {
     return {
@@ -77,7 +106,41 @@ function worldToScreen(position, transform) {
 }
 
 function getCanvasUnit() {
-    return canvas.width / 1200;
+    const cssWidth = canvas.getBoundingClientRect().width;
+    return cssWidth > 0 ? canvas.width / cssWidth : 1;
+}
+
+function getSpriteScale() {
+    const cssWidth = canvas.getBoundingClientRect().width;
+    return getCanvasUnit() * clamp(cssWidth / 850, 0.72, 1.08) * view.zoom;
+}
+
+function drawImageCover(image) {
+    const scale = Math.max(canvas.width / image.naturalWidth, canvas.height / image.naturalHeight);
+    const width = image.naturalWidth * scale;
+    const height = image.naturalHeight * scale;
+    context.drawImage(image, (canvas.width - width) / 2, (canvas.height - height) / 2, width, height);
+}
+
+function drawAtlasSprite(name, point, size, rotation = 0) {
+    if (!visualAssets.atlas.ready) return false;
+    const sprite = atlasSprites[name];
+    context.save();
+    context.translate(point.x, point.y);
+    context.rotate(rotation);
+    context.drawImage(
+        visualAssets.atlas.image,
+        sprite.x,
+        sprite.y,
+        sprite.width,
+        sprite.height,
+        -size / 2,
+        -size / 2,
+        size,
+        size,
+    );
+    context.restore();
+    return true;
 }
 
 function syncCanvasResolution() {
@@ -94,6 +157,16 @@ function syncCanvasResolution() {
 }
 
 function drawBackground(transform) {
+    context.fillStyle = palette.ink;
+    context.fillRect(0, 0, canvas.width, canvas.height);
+
+    if (visualAssets.background.ready) {
+        context.save();
+        context.globalAlpha = 0.78;
+        drawImageCover(visualAssets.background.image);
+        context.restore();
+    }
+
     const gradient = context.createRadialGradient(
         transform.x,
         transform.y,
@@ -102,8 +175,9 @@ function drawBackground(transform) {
         transform.y,
         Math.max(canvas.width, canvas.height) * 0.72,
     );
-    gradient.addColorStop(0, '#0c151b');
-    gradient.addColorStop(1, palette.ink);
+    gradient.addColorStop(0, 'rgba(12, 21, 27, 0.3)');
+    gradient.addColorStop(0.58, 'rgba(5, 9, 13, 0.08)');
+    gradient.addColorStop(1, 'rgba(5, 9, 13, 0.82)');
     context.fillStyle = gradient;
     context.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -185,37 +259,43 @@ function drawLabel(text, point, offsetX, offsetY) {
 
 function drawSun(transform) {
     const unit = getCanvasUnit();
-    const radius = 9 * unit * view.zoom;
+    const spriteScale = getSpriteScale();
+    const radius = 11 * unit * view.zoom;
     context.save();
-    context.shadowBlur = 18 * unit;
+    context.shadowBlur = 26 * unit;
     context.shadowColor = palette.sun;
-    context.beginPath();
-    context.arc(transform.x, transform.y, radius, 0, Math.PI * 2);
-    context.fillStyle = palette.sun;
-    context.fill();
+    if (!drawAtlasSprite('sun', { x: transform.x, y: transform.y }, 54 * spriteScale)) {
+        context.beginPath();
+        context.arc(transform.x, transform.y, radius, 0, Math.PI * 2);
+        context.fillStyle = palette.sun;
+        context.fill();
+    }
     context.restore();
-    drawLabel('SUN', { x: transform.x, y: transform.y }, 13, -12);
+    drawLabel('SUN', { x: transform.x, y: transform.y }, 28, -24);
 }
 
 function drawEarth(position, transform, time) {
     const unit = getCanvasUnit();
+    const spriteScale = getSpriteScale();
     const point = worldToScreen(position, transform);
     const radius = 7 * unit * view.zoom;
     context.save();
     context.shadowBlur = 13 * unit;
     context.shadowColor = palette.earth;
-    context.beginPath();
-    context.arc(point.x, point.y, radius, 0, Math.PI * 2);
-    context.fillStyle = palette.earth;
-    context.fill();
-    context.clip();
-    context.translate(point.x, point.y);
-    context.rotate(position.angle * 1.8);
-    context.fillStyle = palette.earthLand;
-    context.beginPath();
-    context.ellipse(-radius * 0.15, 0, radius * 0.72, radius * 0.3, 0.5, 0, Math.PI * 2);
-    context.ellipse(radius * 0.55, -radius * 0.45, radius * 0.34, radius * 0.2, -0.5, 0, Math.PI * 2);
-    context.fill();
+    if (!drawAtlasSprite('earth', point, 40 * spriteScale, position.angle * 0.12)) {
+        context.beginPath();
+        context.arc(point.x, point.y, radius, 0, Math.PI * 2);
+        context.fillStyle = palette.earth;
+        context.fill();
+        context.clip();
+        context.translate(point.x, point.y);
+        context.rotate(position.angle * 1.8);
+        context.fillStyle = palette.earthLand;
+        context.beginPath();
+        context.ellipse(-radius * 0.15, 0, radius * 0.72, radius * 0.3, 0.5, 0, Math.PI * 2);
+        context.ellipse(radius * 0.55, -radius * 0.45, radius * 0.34, radius * 0.2, -0.5, 0, Math.PI * 2);
+        context.fill();
+    }
     context.restore();
 
     const moonAngle = time / 27.3 * Math.PI * 2;
@@ -225,39 +305,51 @@ function drawEarth(position, transform, time) {
         y: position.y + Math.sin(moonAngle) * moonOrbit,
     }, transform);
     context.save();
-    context.fillStyle = '#b8bec3';
-    context.beginPath();
-    context.arc(moon.x, moon.y, Math.max(1.4, 2 * unit * view.zoom), 0, Math.PI * 2);
-    context.fill();
+    context.shadowBlur = 8 * unit;
+    context.shadowColor = '#b8bec3';
+    if (!drawAtlasSprite('moon', moon, 15 * spriteScale, moonAngle * 0.05)) {
+        context.fillStyle = '#b8bec3';
+        context.beginPath();
+        context.arc(moon.x, moon.y, Math.max(1.4, 2 * unit * view.zoom), 0, Math.PI * 2);
+        context.fill();
+    }
     context.restore();
-    drawLabel('EARTH', point, 12, 18);
+    drawLabel('EARTH', point, 22, 24);
 }
 
 function drawMars(position, transform) {
     const unit = getCanvasUnit();
+    const spriteScale = getSpriteScale();
     const point = worldToScreen(position, transform);
     const radius = 6 * unit * view.zoom;
     context.save();
     context.shadowBlur = 13 * unit;
     context.shadowColor = palette.mars;
-    context.beginPath();
-    context.arc(point.x, point.y, radius, 0, Math.PI * 2);
-    context.fillStyle = palette.mars;
-    context.fill();
-    context.clip();
-    context.translate(point.x, point.y);
-    context.rotate(position.angle);
-    context.fillStyle = palette.marsDark;
-    context.beginPath();
-    context.ellipse(0, radius * 0.2, radius * 0.85, radius * 0.28, -0.3, 0, Math.PI * 2);
-    context.fill();
+    if (!drawAtlasSprite('mars', point, 37 * spriteScale, position.angle * 0.08)) {
+        context.beginPath();
+        context.arc(point.x, point.y, radius, 0, Math.PI * 2);
+        context.fillStyle = palette.mars;
+        context.fill();
+        context.clip();
+        context.translate(point.x, point.y);
+        context.rotate(position.angle);
+        context.fillStyle = palette.marsDark;
+        context.beginPath();
+        context.ellipse(0, radius * 0.2, radius * 0.85, radius * 0.28, -0.3, 0, Math.PI * 2);
+        context.fill();
+    }
     context.restore();
-    drawLabel('MARS', point, 11, -11);
+    drawLabel('MARS', point, 21, -20);
 }
 
 function drawSpacecraft(position, transform) {
     const unit = getCanvasUnit();
+    const spriteScale = getSpriteScale();
     const point = worldToScreen(position, transform);
+    if (spacecraft.phase === 'waiting') {
+        point.x += 34 * unit;
+        point.y -= 20 * unit;
+    }
     const size = 8 * unit * view.zoom;
     let angle = Math.atan2(position.y, position.x) + Math.PI / 2;
     if (spacecraft.trail.length > 1) {
@@ -266,27 +358,29 @@ function drawSpacecraft(position, transform) {
     }
 
     context.save();
-    context.translate(point.x, point.y);
-    context.rotate(angle);
     context.shadowBlur = 10 * unit;
     context.shadowColor = palette.paper;
-    context.fillStyle = palette.paper;
-    context.beginPath();
-    context.moveTo(size, 0);
-    context.lineTo(-size * 0.58, size * 0.48);
-    context.lineTo(-size * 0.25, 0);
-    context.lineTo(-size * 0.58, -size * 0.48);
-    context.closePath();
-    context.fill();
-    if (spacecraft.phase === 'transfer' && !isPaused) {
-        context.fillStyle = palette.marsLight;
+    if (!drawAtlasSprite('spacecraft', point, 58 * spriteScale, angle)) {
+        context.translate(point.x, point.y);
+        context.rotate(angle);
+        context.fillStyle = palette.paper;
         context.beginPath();
-        context.moveTo(-size * 0.28, 0);
-        context.lineTo(-size * 1.15, size * 0.25);
-        context.lineTo(-size * 0.85, 0);
-        context.lineTo(-size * 1.15, -size * 0.25);
+        context.moveTo(size, 0);
+        context.lineTo(-size * 0.58, size * 0.48);
+        context.lineTo(-size * 0.25, 0);
+        context.lineTo(-size * 0.58, -size * 0.48);
         context.closePath();
         context.fill();
+        if (spacecraft.phase === 'transfer' && !isPaused) {
+            context.fillStyle = palette.marsLight;
+            context.beginPath();
+            context.moveTo(-size * 0.28, 0);
+            context.lineTo(-size * 1.15, size * 0.25);
+            context.lineTo(-size * 0.85, 0);
+            context.lineTo(-size * 1.15, -size * 0.25);
+            context.closePath();
+            context.fill();
+        }
     }
     context.restore();
 }

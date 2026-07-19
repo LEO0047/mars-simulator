@@ -8,6 +8,8 @@
     <title>火星轉移軌道實驗室</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preload" as="image" href="assets/generated/deep-space-background.png">
+    <link rel="preload" as="image" href="assets/generated/celestial-atlas.png">
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -57,7 +59,7 @@
                 </div>
 
                 <div class="canvas-frame">
-                    <canvas id="orbitCanvas" role="img" aria-label="地球、火星與太空船的日心軌道圖">
+                    <canvas id="orbitCanvas" role="img" aria-label="太陽、地球、月球、火星與太空船的日心軌道圖">
                         你的瀏覽器不支援 Canvas；請使用現代瀏覽器查看軌道模擬。
                     </canvas>
                     <div class="zoom-controls" aria-label="軌道視圖控制">
@@ -71,6 +73,7 @@
                 <div class="legend" aria-label="軌道圖例">
                     <span><i class="legend-swatch swatch-sun"></i>太陽</span>
                     <span><i class="legend-swatch swatch-earth"></i>地球</span>
+                    <span><i class="legend-swatch swatch-moon"></i>月球</span>
                     <span><i class="legend-swatch swatch-mars"></i>火星</span>
                     <span><i class="legend-swatch swatch-craft"></i>太空船</span>
                     <span><i class="legend-line"></i>計畫軌道</span>

@@ -29,6 +29,18 @@ python3 -m http.server 4173
 node --test tests/simulation.test.mjs
 ```
 
+## 視覺資產
+
+宇宙背景與天體 atlas 由 OpenAI 原生圖片生成工具製作（本次工具未回報可驗證的 model ID）。`assets/generated/celestial-atlas-keyed.png` 保留純洋紅 `#FF00FF` 原始色鍵，透明成品可重建：
+
+```bash
+scripts/color-key-image.swift \
+  assets/generated/celestial-atlas-keyed.png \
+  assets/generated/celestial-atlas.png
+```
+
+這個流程會一併處理抗鋸齒邊緣的 magenta despill；重建後仍應在近白與近黑背景檢查外輪廓及火箭零件間的內部縫隙。
+
 ## 模型範圍
 
 本工具採用共面圓形行星軌道與預設轉移橢圓，用於解釋發射相位與 ΔV 取捨。它未納入軌道傾角、攝動、有限推力或真實星曆，不可用於實際任務導航。
