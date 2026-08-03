@@ -8,6 +8,7 @@ import {
     getPlanetPosition,
     getSpacecraftVelocity,
     getTransferPosition,
+    solveTransferForLaunchDay,
 } from './simulation.mjs';
 
 const elements = Object.fromEntries([
@@ -41,6 +42,7 @@ const palette = {
     danger: '#e87967',
 };
 
+let selectedModeId = 'hohmann';
 let currentMode = TRANSFER_MODES.hohmann;
 let launchDay = Math.round(calculateOptimalLaunchDay(currentMode));
 let animationSpeed = 24;
@@ -514,7 +516,29 @@ function resetMission({ notify = true, preserveView = false } = {}) {
     if (notify) showNotification('任務已重置，等待新的發射指令。');
 }
 
+function resolveCustomMode() {
+    const solution = solveTransferForLaunchDay(launchDay);
+    if (solution) {
+        currentMode = solution;
+        return true;
+    }
+    // Lambert 掃描理論上任何發射日都有解；真的失敗就退回霍曼，別讓 UI 掛在半路。
+    selectedModeId = 'hohmann';
+    currentMode = TRANSFER_MODES.hohmann;
+    showNotification('此發射日求解失敗，已退回霍曼轉移。', 'error');
+    return false;
+}
+
 function setMode(modeId) {
+    selectedModeId = modeId;
+    if (modeId === 'custom') {
+        resolveCustomMode();
+        resetMission({ notify: false, preserveView: true });
+        updateModeUI();
+        updateUI();
+        showNotification('已切換為即時解：任何發射日都會解出最小 ΔV 轉移。');
+        return;
+    }
     currentMode = TRANSFER_MODES[modeId];
     launchDay = Math.round(calculateOptimalLaunchDay(currentMode));
     elements.launchWindow.value = String(launchDay);
@@ -647,6 +671,10 @@ document.querySelectorAll('[data-mode]').forEach((button) => {
 elements.launchWindow.addEventListener('input', (event) => {
     if (spacecraft.phase !== 'waiting') resetMission({ notify: false, preserveView: true });
     launchDay = Number.parseInt(event.target.value, 10);
+    if (selectedModeId === 'custom') {
+        resolveCustomMode();
+        updateModeUI();
+    }
     updateUI();
     needsRedraw = true;
 });
@@ -657,9 +685,14 @@ elements.speedSlider.addEventListener('input', (event) => {
 });
 
 elements.findWindow.addEventListener('click', () => {
-    launchDay = Math.round(calculateOptimalLaunchDay(currentMode));
+    const referenceMode = selectedModeId === 'custom' ? TRANSFER_MODES.hohmann : currentMode;
+    launchDay = Math.round(calculateOptimalLaunchDay(referenceMode));
     elements.launchWindow.value = String(launchDay);
     if (spacecraft.phase !== 'waiting') resetMission({ notify: false, preserveView: true });
+    if (selectedModeId === 'custom') {
+        resolveCustomMode();
+        updateModeUI();
+    }
     updateUI();
     needsRedraw = true;
     showNotification(`已對準第 ${launchDay} 天的最佳發射窗口。`);
@@ -729,3 +762,9 @@ elements.speedSlider.value = String(animationSpeed);
 updateModeUI();
 resetMission({ notify: false });
 requestAnimationFrame(animate);
+
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(() => {
+        // 離線快取失敗不影響主功能，靜默略過。
+    });
+}

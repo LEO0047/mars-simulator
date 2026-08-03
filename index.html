@@ -6,11 +6,11 @@
     <meta name="theme-color" content="#080c10">
     <meta name="description" content="互動式地球—火星轉移軌道實驗室：比較霍曼與快速轉移，調整發射窗口並解讀會合幾何。">
     <title>火星轉移軌道實驗室</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preload" as="image" href="assets/generated/deep-space-background.png">
     <link rel="preload" as="image" href="assets/generated/celestial-atlas.png">
-    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
+    <link rel="preload" as="font" type="font/woff2" href="assets/fonts/inter-400.woff2" crossorigin>
+    <link rel="preload" as="font" type="font/woff2" href="assets/fonts/barlow-condensed-600.woff2" crossorigin>
+    <link rel="stylesheet" href="assets/fonts/fonts.css">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -114,6 +114,9 @@
                             </button>
                             <button type="button" class="mode-button" id="mode-fast" data-mode="fast" aria-pressed="false">
                                 <span>快速</span><small>156 天</small>
+                            </button>
+                            <button type="button" class="mode-button" id="mode-custom" data-mode="custom" aria-pressed="false">
+                                <span>即時解</span><small>依發射日</small>
                             </button>
                         </div>
                         <p class="control-help" id="modeSummary"></p>
