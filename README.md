@@ -7,11 +7,13 @@
 ## 功能
 
 - 比較霍曼轉移與快速轉移的飛行時間、ΔV 與軌道形狀
+- **即時解模式**：任意發射日以共面 Lambert 求解掃描飛行時間，找出最小 ΔV 轉移軌道
 - 調整 780 天地火會合週期內的發射日
 - 即時顯示發射相位、目標相位與預估抵達誤差
 - 執行、暫停、縮放與平移軌道模擬
 - 任務結束後產生可解釋的本機任務簡報
 - 支援鍵盤焦點、`prefers-reduced-motion` 與手機版面
+- 完全自包含：字型自托管、無任何第三方請求；service worker 離線快取，載入過一次後斷網也能用
 
 ## 本機執行
 
@@ -26,8 +28,12 @@ python3 -m http.server 4173
 ## 驗證
 
 ```bash
-node --test tests/simulation.test.mjs
+node --test tests/simulation.test.mjs tests/solver.test.mjs
 ```
+
+push 到 GitHub 後 CI（GitHub Actions）會自動重跑同一套測試。
+
+兩個預設模式的 ΔV 與即時解模式共用同一套向量公式（近日點切線注入 + 抵達向量差捕獲），由 `simulation.mjs` 在載入時推導，不再寫死常數。
 
 ## 視覺資產
 
