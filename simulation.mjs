@@ -1,5 +1,5 @@
 export const CONSTANTS = Object.freeze({
-    G: 6.67430e-11,
+    G: 6.6743e-11,
     M_SUN: 1.989e30,
     AU_M: 1.496e11,
     EARTH_ORBIT_AU: 1,
@@ -9,10 +9,11 @@ export const CONSTANTS = Object.freeze({
     ARRIVAL_THRESHOLD_AU: 0.05,
 });
 
-const hohmannSemiMajorAxisAU = (CONSTANTS.EARTH_ORBIT_AU + CONSTANTS.MARS_ORBIT_AU) / 2;
+const hohmannSemiMajorAxisAU =
+    (CONSTANTS.EARTH_ORBIT_AU + CONSTANTS.MARS_ORBIT_AU) / 2;
 const hohmannEccentricity =
-    (CONSTANTS.MARS_ORBIT_AU - CONSTANTS.EARTH_ORBIT_AU)
-    / (CONSTANTS.MARS_ORBIT_AU + CONSTANTS.EARTH_ORBIT_AU);
+    (CONSTANTS.MARS_ORBIT_AU - CONSTANTS.EARTH_ORBIT_AU) /
+    (CONSTANTS.MARS_ORBIT_AU + CONSTANTS.EARTH_ORBIT_AU);
 
 const MU_SUN = CONSTANTS.G * CONSTANTS.M_SUN;
 const DAY_SECONDS = 86400;
@@ -29,24 +30,40 @@ function visVivaSpeedKms(radiusAU, semiMajorAxisAU) {
 
 // 兩個預設模式的 ΔV 用同一套向量公式推導：近日點切線注入，抵達時取
 // 轉移速度向量與火星圓軌道速度的向量差（含徑向分量）。
-function computeTangentialModeDeltaV(semiMajorAxisAU, eccentricity, transferAngleDeg) {
-    const injection = visVivaSpeedKms(CONSTANTS.EARTH_ORBIT_AU, semiMajorAxisAU)
-        - circularSpeedKms(CONSTANTS.EARTH_ORBIT_AU);
+function computeTangentialModeDeltaV(
+    semiMajorAxisAU,
+    eccentricity,
+    transferAngleDeg,
+) {
+    const injection =
+        visVivaSpeedKms(CONSTANTS.EARTH_ORBIT_AU, semiMajorAxisAU) -
+        circularSpeedKms(CONSTANTS.EARTH_ORBIT_AU);
     const semiLatusAU = semiMajorAxisAU * (1 - eccentricity ** 2);
-    const trueAnomaly = transferAngleDeg * Math.PI / 180;
-    const arrivalRadiusAU = semiLatusAU / (1 + eccentricity * Math.cos(trueAnomaly));
+    const trueAnomaly = (transferAngleDeg * Math.PI) / 180;
+    const arrivalRadiusAU =
+        semiLatusAU / (1 + eccentricity * Math.cos(trueAnomaly));
     const arrivalSpeed = visVivaSpeedKms(arrivalRadiusAU, semiMajorAxisAU);
     const angularMomentum = Math.sqrt(MU_SUN * semiLatusAU * CONSTANTS.AU_M);
-    const tangentialSpeed = angularMomentum / (arrivalRadiusAU * CONSTANTS.AU_M) / 1000;
-    const radialSpeed = Math.sqrt(Math.max(arrivalSpeed ** 2 - tangentialSpeed ** 2, 0));
-    const insertion = Math.hypot(tangentialSpeed - circularSpeedKms(arrivalRadiusAU), radialSpeed);
+    const tangentialSpeed =
+        angularMomentum / (arrivalRadiusAU * CONSTANTS.AU_M) / 1000;
+    const radialSpeed = Math.sqrt(
+        Math.max(arrivalSpeed ** 2 - tangentialSpeed ** 2, 0),
+    );
+    const insertion = Math.hypot(
+        tangentialSpeed - circularSpeedKms(arrivalRadiusAU),
+        radialSpeed,
+    );
     return {
         injection: Number(injection.toFixed(2)),
         insertion: Number(insertion.toFixed(2)),
     };
 }
 
-const hohmannDeltaV = computeTangentialModeDeltaV(hohmannSemiMajorAxisAU, hohmannEccentricity, 180);
+const hohmannDeltaV = computeTangentialModeDeltaV(
+    hohmannSemiMajorAxisAU,
+    hohmannEccentricity,
+    180,
+);
 const fastDeltaV = computeTangentialModeDeltaV(1.4, 0.2857, 123.2);
 
 export const TRANSFER_MODES = Object.freeze({
@@ -76,8 +93,8 @@ export const TRANSFER_MODES = Object.freeze({
     }),
 });
 
-export const toRadians = (degrees) => degrees * Math.PI / 180;
-export const toDegrees = (radians) => radians * 180 / Math.PI;
+export const toRadians = (degrees) => (degrees * Math.PI) / 180;
+export const toDegrees = (radians) => (radians * 180) / Math.PI;
 
 export function normalizeAngle(radians) {
     const fullTurn = Math.PI * 2;
@@ -90,7 +107,7 @@ export function signedAngularDifference(angle, reference) {
 }
 
 export function getPlanetPosition(radiusAU, periodDays, day) {
-    const angle = normalizeAngle(day / periodDays * Math.PI * 2);
+    const angle = normalizeAngle((day / periodDays) * Math.PI * 2);
     return {
         x: radiusAU * Math.cos(angle),
         y: radiusAU * Math.sin(angle),
@@ -109,13 +126,14 @@ export function getSynodicPeriod() {
 }
 
 export function getRequiredLaunchPhase(mode) {
-    const marsTravelAngle = mode.durationDays / CONSTANTS.MARS_PERIOD_DAYS * Math.PI * 2;
+    const marsTravelAngle =
+        (mode.durationDays / CONSTANTS.MARS_PERIOD_DAYS) * Math.PI * 2;
     return normalizeAngle(toRadians(mode.transferAngleDeg) - marsTravelAngle);
 }
 
 export function calculateOptimalLaunchDay(mode) {
-    const earthAngularRate = Math.PI * 2 / CONSTANTS.EARTH_PERIOD_DAYS;
-    const marsAngularRate = Math.PI * 2 / CONSTANTS.MARS_PERIOD_DAYS;
+    const earthAngularRate = (Math.PI * 2) / CONSTANTS.EARTH_PERIOD_DAYS;
+    const marsAngularRate = (Math.PI * 2) / CONSTANTS.MARS_PERIOD_DAYS;
     const relativeAngularRate = marsAngularRate - earthAngularRate;
     const targetPhase = getRequiredLaunchPhase(mode);
     const synodicPeriod = getSynodicPeriod();
@@ -128,9 +146,48 @@ export function calculateOptimalLaunchDay(mode) {
 export function getTransferPosition(mode, progress, startAngle) {
     const clampedProgress = Math.min(Math.max(progress, 0), 1);
     const startTrueAnomaly = toRadians(mode.startTrueAnomalyDeg ?? 0);
-    const trueAnomaly = startTrueAnomaly + clampedProgress * toRadians(mode.transferAngleDeg);
-    const radiusAU = mode.semiMajorAxisAU * (1 - mode.eccentricity ** 2)
-        / (1 + mode.eccentricity * Math.cos(trueAnomaly));
+    const endTrueAnomaly = startTrueAnomaly + toRadians(mode.transferAngleDeg);
+    let trueAnomaly =
+        startTrueAnomaly + clampedProgress * toRadians(mode.transferAngleDeg);
+    // Interpolate mean anomaly (elapsed time), not angle: Kepler's second law.
+    if (mode.eccentricity < 1) {
+        const e = mode.eccentricity;
+        const unwrap = (angle, reference) =>
+            angle +
+            Math.round((reference - angle) / (2 * Math.PI)) * 2 * Math.PI;
+        const meanAt = (nu) => {
+            const E = unwrap(
+                2 *
+                    Math.atan2(
+                        Math.sqrt(1 - e) * Math.sin(nu / 2),
+                        Math.sqrt(1 + e) * Math.cos(nu / 2),
+                    ),
+                nu,
+            );
+            return E - e * Math.sin(E);
+        };
+        const mean =
+            meanAt(startTrueAnomaly) +
+            clampedProgress *
+                (meanAt(endTrueAnomaly) - meanAt(startTrueAnomaly));
+        let E = mean;
+        for (let i = 0; i < 20; i += 1) {
+            const delta = (E - e * Math.sin(E) - mean) / (1 - e * Math.cos(E));
+            E -= delta;
+            if (Math.abs(delta) < 1e-12) break;
+        }
+        trueAnomaly = unwrap(
+            2 *
+                Math.atan2(
+                    Math.sqrt(1 + e) * Math.sin(E / 2),
+                    Math.sqrt(1 - e) * Math.cos(E / 2),
+                ),
+            E,
+        );
+    }
+    const radiusAU =
+        (mode.semiMajorAxisAU * (1 - mode.eccentricity ** 2)) /
+        (1 + mode.eccentricity * Math.cos(trueAnomaly));
     const angle = startAngle + (trueAnomaly - startTrueAnomaly);
 
     return {
@@ -161,17 +218,25 @@ export function getLaunchGeometry(mode, launchDay) {
         CONSTANTS.MARS_PERIOD_DAYS,
         launchDay,
     );
-    const spacecraftAtArrival = getTransferPosition(mode, 1, earthAtLaunch.angle);
+    const spacecraftAtArrival = getTransferPosition(
+        mode,
+        1,
+        earthAtLaunch.angle,
+    );
     const marsAtArrival = getPlanetPosition(
         CONSTANTS.MARS_ORBIT_AU,
         CONSTANTS.MARS_PERIOD_DAYS,
         launchDay + mode.durationDays,
     );
-    const currentPhase = normalizeAngle(marsAtLaunch.angle - earthAtLaunch.angle);
-    const targetPhase = getRequiredLaunchPhase(mode);
+    const currentPhase = normalizeAngle(
+        marsAtLaunch.angle - earthAtLaunch.angle,
+    );
+    const targetPhase =
+        mode.id === 'custom' ? currentPhase : getRequiredLaunchPhase(mode);
     const phaseError = signedAngularDifference(currentPhase, targetPhase);
     const arrivalErrorAU = getDistance(spacecraftAtArrival, marsAtArrival);
-    const optimalLaunchDay = calculateOptimalLaunchDay(mode);
+    const optimalLaunchDay =
+        mode.id === 'custom' ? launchDay : calculateOptimalLaunchDay(mode);
     const synodicPeriod = getSynodicPeriod();
     let dayOffset = launchDay - optimalLaunchDay;
 
@@ -233,8 +298,10 @@ export function solveLambert(r1Vec, r2Vec, tofSeconds) {
     const r1 = Math.hypot(r1Vec.x, r1Vec.y);
     const r2 = Math.hypot(r2Vec.x, r2Vec.y);
     const cross = r1Vec.x * r2Vec.y - r1Vec.y * r2Vec.x;
-    const cosSweep = Math.min(Math.max(
-        (r1Vec.x * r2Vec.x + r1Vec.y * r2Vec.y) / (r1 * r2), -1), 1);
+    const cosSweep = Math.min(
+        Math.max((r1Vec.x * r2Vec.x + r1Vec.y * r2Vec.y) / (r1 * r2), -1),
+        1,
+    );
     let sweep = Math.acos(cosSweep);
     if (cross < 0) sweep = Math.PI * 2 - sweep;
     if (Math.abs(1 - cosSweep) < 1e-12) return null;
@@ -243,12 +310,14 @@ export function solveLambert(r1Vec, r2Vec, tofSeconds) {
     if (Math.abs(A) < 1e-6) return null;
 
     const timeOfFlightFor = (z) => {
-        const y = r1 + r2 + A * (z * stumpffS(z) - 1) / Math.sqrt(stumpffC(z));
+        const y =
+            r1 + r2 + (A * (z * stumpffS(z) - 1)) / Math.sqrt(stumpffC(z));
         if (y < 0) return null;
         const chi = Math.sqrt(y / stumpffC(z));
         return {
             y,
-            tof: (chi ** 3 * stumpffS(z) + A * Math.sqrt(y)) / Math.sqrt(MU_SUN),
+            tof:
+                (chi ** 3 * stumpffS(z) + A * Math.sqrt(y)) / Math.sqrt(MU_SUN),
         };
     };
 
@@ -269,7 +338,8 @@ export function solveLambert(r1Vec, r2Vec, tofSeconds) {
         solution = { z: zMid, ...result };
         if (Math.abs(result.tof - tofSeconds) < 1) break;
     }
-    if (!solution || Math.abs(solution.tof - tofSeconds) > tofSeconds * 0.001) return null;
+    if (!solution || Math.abs(solution.tof - tofSeconds) > tofSeconds * 0.001)
+        return null;
 
     const { y } = solution;
     const f = 1 - y / r1;
@@ -277,13 +347,20 @@ export function solveLambert(r1Vec, r2Vec, tofSeconds) {
     const gDot = 1 - y / r2;
     return {
         v1: { x: (r2Vec.x - f * r1Vec.x) / g, y: (r2Vec.y - f * r1Vec.y) / g },
-        v2: { x: (gDot * r2Vec.x - r1Vec.x) / g, y: (gDot * r2Vec.y - r1Vec.y) / g },
+        v2: {
+            x: (gDot * r2Vec.x - r1Vec.x) / g,
+            y: (gDot * r2Vec.y - r1Vec.y) / g,
+        },
         sweep,
     };
 }
 
 function evaluateTransferCandidate(launchDay, tofDays) {
-    const earth = getPlanetPosition(CONSTANTS.EARTH_ORBIT_AU, CONSTANTS.EARTH_PERIOD_DAYS, launchDay);
+    const earth = getPlanetPosition(
+        CONSTANTS.EARTH_ORBIT_AU,
+        CONSTANTS.EARTH_PERIOD_DAYS,
+        launchDay,
+    );
     const mars = getPlanetPosition(
         CONSTANTS.MARS_ORBIT_AU,
         CONSTANTS.MARS_PERIOD_DAYS,
@@ -294,11 +371,33 @@ function evaluateTransferCandidate(launchDay, tofDays) {
     const lambert = solveLambert(r1Vec, r2Vec, tofDays * DAY_SECONDS);
     if (!lambert) return null;
 
-    const earthVelocity = getCircularVelocityVector(CONSTANTS.EARTH_ORBIT_AU, earth.angle);
-    const marsVelocity = getCircularVelocityVector(CONSTANTS.MARS_ORBIT_AU, mars.angle);
-    const injection = Math.hypot(lambert.v1.x - earthVelocity.x, lambert.v1.y - earthVelocity.y) / 1000;
-    const insertion = Math.hypot(marsVelocity.x - lambert.v2.x, marsVelocity.y - lambert.v2.y) / 1000;
-    return { tofDays, lambert, r1Vec, injection, insertion, total: injection + insertion, earth };
+    const earthVelocity = getCircularVelocityVector(
+        CONSTANTS.EARTH_ORBIT_AU,
+        earth.angle,
+    );
+    const marsVelocity = getCircularVelocityVector(
+        CONSTANTS.MARS_ORBIT_AU,
+        mars.angle,
+    );
+    const injection =
+        Math.hypot(
+            lambert.v1.x - earthVelocity.x,
+            lambert.v1.y - earthVelocity.y,
+        ) / 1000;
+    const insertion =
+        Math.hypot(
+            marsVelocity.x - lambert.v2.x,
+            marsVelocity.y - lambert.v2.y,
+        ) / 1000;
+    return {
+        tofDays,
+        lambert,
+        r1Vec,
+        injection,
+        insertion,
+        total: injection + insertion,
+        earth,
+    };
 }
 
 export function solveTransferForLaunchDay(launchDay, options = {}) {
@@ -311,7 +410,8 @@ export function solveTransferForLaunchDay(launchDay, options = {}) {
     for (let pass = 0; pass < 3; pass += 1) {
         for (let tof = low; tof <= high; tof += step) {
             const candidate = evaluateTransferCandidate(launchDay, tof);
-            if (candidate && (!best || candidate.total < best.total)) best = candidate;
+            if (candidate && (!best || candidate.total < best.total))
+                best = candidate;
         }
         if (!best) return null;
         low = Math.max(tofMinDays, best.tofDays - step);
@@ -331,16 +431,23 @@ export function solveTransferForLaunchDay(launchDay, options = {}) {
         y: (-v1.x * angularMomentum) / MU_SUN - r1Vec.y / r1,
     };
     const eccentricity = Math.hypot(eccVector.x, eccVector.y);
-    const cosNu = Math.min(Math.max(
-        (eccVector.x * r1Vec.x + eccVector.y * r1Vec.y) / (eccentricity * r1), -1), 1);
+    const cosNu = Math.min(
+        Math.max(
+            (eccVector.x * r1Vec.x + eccVector.y * r1Vec.y) /
+                (eccentricity * r1),
+            -1,
+        ),
+        1,
+    );
     let startTrueAnomaly = Math.acos(cosNu);
-    if (r1Vec.x * v1.x + r1Vec.y * v1.y < 0) startTrueAnomaly = Math.PI * 2 - startTrueAnomaly;
+    if (r1Vec.x * v1.x + r1Vec.y * v1.y < 0)
+        startTrueAnomaly = Math.PI * 2 - startTrueAnomaly;
 
     return {
         id: 'custom',
         name: '即時解轉移',
         nameEn: 'Coplanar Lambert transfer',
-        durationDays: Math.round(best.tofDays),
+        durationDays: best.tofDays,
         injectionDeltaV: Number(best.injection.toFixed(2)),
         insertionDeltaV: Number(best.insertion.toFixed(2)),
         semiMajorAxisAU: semiMajorAxisM / CONSTANTS.AU_M,

@@ -1,52 +1,78 @@
-# Mars Transfer Lab
+# ARES — 火星任務控制台
 
-一個不需安裝或 API key 的互動式地球—火星轉移軌道實驗室。
+**從一條軌道，到第一次著陸。** 純前端火星任務遊樂場：規劃地火轉移，回放深空航程，再接管最後 8 公里的降落。
 
-[開啟線上版本](https://leo0047.github.io/mars-simulator/)
+[開始任務 →](https://leo0047.github.io/mars-simulator/)
 
-## 功能
+## 2.0 有什麼
 
-- 比較霍曼轉移與快速轉移的飛行時間、ΔV 與軌道形狀
-- **即時解模式**：任意發射日以共面 Lambert 求解掃描飛行時間，找出最小 ΔV 轉移軌道
-- 調整 780 天地火會合週期內的發射日
-- 即時顯示發射相位、目標相位與預估抵達誤差
-- 執行、暫停、縮放與平移軌道模擬
-- 任務結束後產生可解釋的本機任務簡報
-- 支援鍵盤焦點、`prefers-reduced-motion` 與手機版面
-- 完全自包含：字型自托管、無任何第三方請求；service worker 離線快取，載入過一次後斷網也能用
+- **任務控制台**：全新深色介面、火星主視覺、即時 Canvas 軌道與程序生成降落場景，支援手機與鍵盤。
+- **三種軌道**：保留霍曼、快速轉移與共面 Lambert 即時求解。橢圓航程改用克卜勒方程推進，保留 Lambert 飛行時間精度。
+- **窗口探索**：40 個發射日的誤差圖；點擊即套用。即時解模式顯示霍曼基準誤差，選日後重新求解。
+- **時間軸回放**：發射後可拖動整段航程；回放自動暫停，航程距離不受動畫幀率影響。
+- **火星降落**：一維重力、大氣阻力、降落傘、可變質量推力與燃料消耗。自動引導或手動接管，接地速度 ≤ 8 m/s 才成功。
+- **三種情境**：傑澤羅、埃律西昂與奧林帕斯；以不同的大氣倍率、燃料量提供難度變化。
+- **任務紀錄**：本機保留最近 12 次轉移／降落結果，可匯出含物理狀態與降落事件的 JSON。回放同一任務不重複記錄。
+- **離線遊玩**：自托管圖片、字型與完整離線快取，執行時零第三方請求、零 API key、無後端。
+
+## 開始玩
+
+1. 在「軌道規劃」選航線與發射日，按「發射任務」。不確定時按「對準最佳窗口」。
+2. 調整速度或拖動航程回放，觀察火星是否在交會點。
+3. 抵達後按「進入火星降落」，也可直接切換降落頁練習。
+4. 首次可使用自動引導。手動時在高度低於 7,800 m、速度低於 500 m/s 開傘，接近地表後以引擎減速；**點火會切傘**。
+5. 空白鍵暫停目前任務（操作輸入元件時不攔截按鍵）；切換頁面或離開瀏覽器頁籤會暫停任務。
+
+降落練習從固定的 8 km、320 m/s 向下速度開始，**不以軌道會合速度推算大氣進入段**。
 
 ## 本機執行
 
-ES modules 需要透過 HTTP 載入。在 repo 根目錄執行：
+Node 22+ 用於測試；執行網站本身只需要 HTTP 靜態伺服器。
 
-```bash
-python3 -m http.server 4173
+```sh
+python3 scripts/serve.py
+# 開啟 http://127.0.0.1:4173/
 ```
 
-再開啟 <http://127.0.0.1:4173/>。
-
-## 驗證
-
-```bash
-node --test tests/simulation.test.mjs tests/solver.test.mjs
+```sh
+npm ci
+npm test                         # 軌道、Lambert、降落物理
+npx playwright install chromium
+npm run test:browser              # 真實操作、手機、匯出與離線
 ```
 
-push 到 GitHub 後 CI（GitHub Actions）會自動重跑同一套測試。
+瀏覽器測試會自動啟動本機 HTTP server。可用 `BASE_URL=https://leo0047.github.io/mars-simulator/ npm run test:browser` 驗證已部署版本。
 
-兩個預設模式的 ΔV 與即時解模式共用同一套向量公式（近日點切線注入 + 抵達向量差捕獲），由 `simulation.mjs` 在載入時推導，不再寫死常數。
+## 架構與部署
 
-## 視覺資產
+| 檔案 | 職責 |
+| --- | --- |
+| `simulation.mjs` | 地火幾何、ΔV、克卜勒推進、Lambert 求解 |
+| `landing.mjs` | 可獨立測試的下降物理與自動引導 |
+| `app.mjs` | 軌道場景、時間軸、任務紀錄與頁面控制 |
+| `surface.mjs` | 降落操作、場景繪製與事件記錄 |
+| `sw.js` | 完整版本的離線快取 |
 
-宇宙背景與天體 atlas 由 OpenAI 原生圖片生成工具製作（本次工具未回報可驗證的 model ID）。`assets/generated/celestial-atlas-keyed.png` 保留純洋紅 `#FF00FF` 原始色鍵，透明成品可重建：
+不需打包。GitHub Pages 直接從 `main` 根目錄部署；GitHub Actions 執行數值與瀏覽器測試。
 
-```bash
-scripts/color-key-image.swift \
-  assets/generated/celestial-atlas-keyed.png \
-  assets/generated/celestial-atlas.png
-```
-
-這個流程會一併處理抗鋸齒邊緣的 magenta despill；重建後仍應在近白與近黑背景檢查外輪廓及火箭零件間的內部縫隙。
+修改離線資產時更新 `sw.js` 的 `CACHE_NAME`。新版本先完整快取，既有頁籤仍使用原版；關閉此網站所有頁籤、重新開啟即可切換新版。快取清理只處理此應用自己的前綴。
 
 ## 模型範圍
 
-本工具採用共面圓形行星軌道與預設轉移橢圓，用於解釋發射相位與 ΔV 取捨。它未納入軌道傾角、攝動、有限推力或真實星曆，不可用於實際任務導航。
+- 行星採共面圓形軌道，非真實星曆；發射日為模型會合週期，非日曆日期。預設轉移模式保留 259／156 天的教學近似，橢圓上以等掃掠面積推進；Lambert 模式使用求解所得時間。
+- ΔV 是日心轉移注入／會合的速度向量差，未計算地表升空、行星重力井、有限推力、傾角或攝動。
+- 抵達誤差 0.05 AU 以內視為進入會合區，不代表真實捕獲或精確降落。
+- 降落是垂直一維遊戲模型，使用 20 ms 子步長、火星重力 3.711 m/s² 及 [NASA Glenn 大氣曲線](https://www.grc.nasa.gov/www/k-12/airplane/atmosmrm.html)。不模擬升力、熱防護、開傘充氣載荷、橫向導航或真實地形。地點對應的大氣倍率、燃料、推力及評分均為遊戲設計。
+- 自動引導沿高度／下降速度回授減速。分數由接地速度（70%）與剩餘燃料比例（30%）組成。
+
+這是供探索與玩樂的模型，不適用於真實航太導航。
+
+## 視覺資產
+
+沿用原專案的 OpenAI 生成星空與天體 atlas（原工具未回報可驗證的 model ID）。火星降落場景以 Canvas 程序繪製，無外部地形或圖片服務。
+
+`assets/generated/celestial-atlas-keyed.png` 保留原始色鍵，可重建透明 atlas：
+
+```sh
+scripts/color-key-image.swift assets/generated/celestial-atlas-keyed.png assets/generated/celestial-atlas.png
+```

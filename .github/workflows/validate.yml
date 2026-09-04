@@ -14,5 +14,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Simulation and solver tests
-        run: node --test tests/simulation.test.mjs tests/solver.test.mjs
+      - run: npm ci
+      - name: Orbit, solver and landing physics
+        run: npm test
+      - run: npx playwright install --with-deps chromium
+      - name: Browser missions, mobile and offline
+        run: npm run test:browser
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: browser-failures
+          path: test-results/
+          retention-days: 7

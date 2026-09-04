@@ -1,207 +1,755 @@
 <!doctype html>
 <html lang="zh-Hant-TW">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#080c10">
-    <meta name="description" content="互動式地球—火星轉移軌道實驗室：比較霍曼與快速轉移，調整發射窗口並解讀會合幾何。">
-    <title>火星轉移軌道實驗室</title>
-    <link rel="preload" as="image" href="assets/generated/deep-space-background.png">
-    <link rel="preload" as="image" href="assets/generated/celestial-atlas.png">
-    <link rel="preload" as="font" type="font/woff2" href="assets/fonts/inter-400.woff2" crossorigin>
-    <link rel="preload" as="font" type="font/woff2" href="assets/fonts/barlow-condensed-600.woff2" crossorigin>
-    <link rel="stylesheet" href="assets/fonts/fonts.css">
-    <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-    <a class="skip-link" href="#mission-control">跳到任務控制</a>
-
-    <div class="app-shell">
-        <header class="mission-header">
-            <div class="header-copy">
-                <p class="eyebrow"><span>MARS TRANSFER LAB</span><span>簡化日心二體模型</span></p>
-                <h1>看懂火星<br>發射窗口。</h1>
-                <p class="lede">比較低能量與快速轉移，調整地火相位，觀察一次發射如何從命中窗口變成錯過火星。</p>
-            </div>
-            <div class="header-status" aria-live="polite">
-                <span class="status-light" aria-hidden="true"></span>
-                <span class="status-kicker">MISSION STATE</span>
-                <strong id="headerStatus">等待發射</strong>
-            </div>
-        </header>
-
-        <section class="telemetry-strip" aria-label="任務遙測摘要">
-            <div class="telemetry-item">
-                <span class="telemetry-label">累積航程</span>
-                <strong><span id="totalDistance">0</span><small> 百萬 km</small></strong>
-            </div>
-            <div class="telemetry-item">
-                <span class="telemetry-label">已執行 ΔV</span>
-                <strong><span id="fuelUsed">0.00</span><small> km/s</small></strong>
-            </div>
-            <div class="telemetry-item">
-                <span class="telemetry-label">航程時間</span>
-                <strong><span id="missionDay">0</span><small> 天</small></strong>
-            </div>
-        </section>
-
-        <main class="workspace">
-            <section class="orbit-panel" aria-labelledby="orbit-heading">
-                <div class="panel-heading">
-                    <div>
-                        <p class="section-code">PLOT / 01</p>
-                        <h2 id="orbit-heading">日心轉移軌道</h2>
-                    </div>
-                    <div class="plot-meta">
-                        <span id="modeBadge">HOHMANN</span>
-                        <span>AU SCALE</span>
-                    </div>
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="theme-color" content="#0a0d11" />
+        <meta
+            name="description"
+            content="ARES 火星任務控制台：計算地火轉移軌道、探索發射窗口，親手完成火星降落。免費、離線可用。"
+        />
+        <title>ARES — 火星任務控制台</title>
+        <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+        <link rel="stylesheet" href="assets/fonts/fonts.css" />
+        <link rel="stylesheet" href="styles.css" />
+    </head>
+    <body>
+        <a class="skip-link" href="#mission-control">跳到任務控制</a>
+        <div class="app-shell">
+            <header class="topbar">
+                <a class="wordmark" href="./" aria-label="ARES 首頁"
+                    ><span class="brand-mark" aria-hidden="true">Λ</span>
+                    ARES<span class="brand-caption">MISSION SYSTEMS</span></a
+                >
+                <div class="topbar-meta">
+                    <span class="status-light"></span> LOCAL SYSTEM ONLINE
+                    <span class="version">FLIGHT OS / 2.0</span>
                 </div>
-
-                <div class="canvas-frame">
-                    <canvas id="orbitCanvas" role="img" aria-label="太陽、地球、月球、火星與太空船的日心軌道圖">
-                        你的瀏覽器不支援 Canvas；請使用現代瀏覽器查看軌道模擬。
-                    </canvas>
-                    <div class="zoom-controls" aria-label="軌道視圖控制">
-                        <button type="button" class="icon-button" id="zoomIn" aria-label="放大軌道視圖" title="放大">＋</button>
-                        <button type="button" class="icon-button" id="zoomOut" aria-label="縮小軌道視圖" title="縮小">−</button>
-                        <button type="button" class="icon-button icon-button-reset" id="resetView" aria-label="重置軌道視圖" title="重置視圖">RESET</button>
-                    </div>
-                    <p class="canvas-hint">拖曳平移 · 滾輪縮放</p>
+            </header>
+            <section class="mission-header">
+                <div class="header-copy">
+                    <p class="eyebrow">
+                        EARTH → MARS <span>人類的下一站</span>
+                    </p>
+                    <h1>NEXT STOP.<br /><em>MARS.</em></h1>
+                    <p class="lede">
+                        從一條軌道，到第一次著陸。<br />規劃你的航線，接管最後一公里。
+                    </p>
                 </div>
-
-                <div class="legend" aria-label="軌道圖例">
-                    <span><i class="legend-swatch swatch-sun"></i>太陽</span>
-                    <span><i class="legend-swatch swatch-earth"></i>地球</span>
-                    <span><i class="legend-swatch swatch-moon"></i>月球</span>
-                    <span><i class="legend-swatch swatch-mars"></i>火星</span>
-                    <span><i class="legend-swatch swatch-craft"></i>太空船</span>
-                    <span><i class="legend-line"></i>計畫軌道</span>
+                <div class="hero-world" aria-hidden="true">
+                    <div class="hero-orbit"></div>
+                    <div class="hero-mars"></div>
+                    <span class="world-label">04 / THE RED PLANET</span
+                    ><span class="world-coordinate">18° N<br />077° E</span>
                 </div>
-
-                <section class="alignment-panel" aria-labelledby="alignment-heading">
-                    <div class="alignment-copy">
-                        <p class="section-code">LAUNCH GEOMETRY</p>
-                        <h3 id="alignment-heading">發射相位對準尺</h3>
-                        <p id="geometryStatus">正在計算發射幾何…</p>
-                    </div>
-                    <div class="alignment-readout">
-                        <div class="phase-values">
-                            <span>目前 <strong id="currentPhase">--°</strong></span>
-                            <span>目標 <strong id="targetPhase">--°</strong></span>
-                        </div>
-                        <div class="alignment-track" aria-hidden="true">
-                            <span class="target-notch"></span>
-                            <span class="alignment-marker" id="alignmentMarker"></span>
-                        </div>
-                        <div class="phase-scale"><span>提早</span><span>窗口</span><span>延後</span></div>
-                    </div>
-                </section>
+                <div class="hero-aside">
+                    <span class="section-code">MISSION OBJECTIVE</span>
+                    <p>跨越星際。<br />平安抵達。</p>
+                    <span class="micro"
+                        >ORBITAL MECHANICS<br />+ POWERED DESCENT</span
+                    >
+                </div>
             </section>
-
-            <aside class="control-column" id="mission-control">
-                <section class="control-card" aria-labelledby="profile-heading">
-                    <div class="card-heading">
-                        <p class="section-code">CONTROL / 02</p>
-                        <h2 id="profile-heading">任務設定</h2>
-                    </div>
-
-                    <div class="control-group">
-                        <span class="control-label" id="transfer-mode-label">轉移模式</span>
-                        <div class="mode-selector" role="group" aria-labelledby="transfer-mode-label">
-                            <button type="button" class="mode-button is-active" id="mode-hohmann" data-mode="hohmann" aria-pressed="true">
-                                <span>霍曼</span><small>259 天</small>
-                            </button>
-                            <button type="button" class="mode-button" id="mode-fast" data-mode="fast" aria-pressed="false">
-                                <span>快速</span><small>156 天</small>
-                            </button>
-                            <button type="button" class="mode-button" id="mode-custom" data-mode="custom" aria-pressed="false">
-                                <span>即時解</span><small>依發射日</small>
-                            </button>
+            <nav class="mission-nav" aria-label="任務階段">
+                <button
+                    class="nav-tab is-active"
+                    id="orbitTab"
+                    aria-controls="orbitWorkspace"
+                    aria-pressed="true"
+                >
+                    <span>01</span> 軌道規劃 <small>TRAJECTORY</small>
+                </button>
+                <button
+                    class="nav-tab"
+                    id="landingTab"
+                    aria-controls="landingWorkspace"
+                    aria-pressed="false"
+                >
+                    <span>02</span> 火星降落 <small>DESCENT</small>
+                </button>
+                <div class="header-status">
+                    <span class="status-light"></span
+                    ><strong id="headerStatus">等待發射</strong>
+                </div>
+            </nav>
+            <main>
+                <div id="orbitWorkspace">
+                    <section class="telemetry-strip" aria-label="任務遙測摘要">
+                        <div class="telemetry-item">
+                            <span class="telemetry-label"
+                                >DISTANCE TRAVELED<br />累積航程</span
+                            ><strong
+                                ><span id="totalDistance">0</span
+                                ><small> 百萬 km</small></strong
+                            >
                         </div>
-                        <p class="control-help" id="modeSummary"></p>
-                    </div>
-
-                    <div class="control-group">
-                        <div class="label-row">
-                            <label for="launchWindow">發射日</label>
-                            <output id="launchValue" for="launchWindow">第 684 天</output>
+                        <div class="telemetry-item">
+                            <span class="telemetry-label"
+                                >DELTA-V EXPENDED<br />已執行 ΔV</span
+                            ><strong
+                                ><span id="fuelUsed">0.00</span
+                                ><small> km/s</small></strong
+                            >
                         </div>
-                        <input type="range" id="launchWindow" min="0" max="780" step="1" value="684">
-                        <div class="range-extents"><span>會合週期 0</span><span>780 天</span></div>
-                        <button type="button" class="text-button" id="findWindow">對準最佳窗口 <span aria-hidden="true">→</span></button>
-                    </div>
-
-                    <div class="control-group">
-                        <div class="label-row">
-                            <label for="speedSlider">模擬速度</label>
-                            <output id="speedValue" for="speedSlider">24×</output>
+                        <div class="telemetry-item">
+                            <span class="telemetry-label"
+                                >MISSION ELAPSED<br />航程時間</span
+                            ><strong
+                                ><span id="missionDay">0</span
+                                ><small> 天</small></strong
+                            >
                         </div>
-                        <input type="range" id="speedSlider" min="1" max="100" step="1" value="24">
-                        <div class="range-extents"><span>1×</span><span>100×</span></div>
+                    </section>
+                    <div class="workspace">
+                        <section
+                            class="orbit-panel"
+                            aria-labelledby="orbit-heading"
+                        >
+                            <div class="panel-heading">
+                                <div>
+                                    <p class="section-code">
+                                        HELIOCENTRIC VIEW / LIVE
+                                    </p>
+                                    <h2 id="orbit-heading">地火轉移軌道</h2>
+                                </div>
+                                <div class="plot-meta">
+                                    <span id="modeBadge">HOHMANN</span
+                                    ><span>AU SCALE</span>
+                                </div>
+                            </div>
+                            <div class="canvas-frame">
+                                <canvas
+                                    id="orbitCanvas"
+                                    role="img"
+                                    aria-label="地球、火星與太空船的即時日心轉移軌道"
+                                    >請使用支援 Canvas 的瀏覽器。</canvas
+                                >
+                                <div class="canvas-top-label">
+                                    <span class="status-light"></span> DEEP
+                                    SPACE TRACKING
+                                </div>
+                                <div class="zoom-controls">
+                                    <button
+                                        class="icon-button"
+                                        id="zoomIn"
+                                        aria-label="放大軌道視圖"
+                                    >
+                                        ＋</button
+                                    ><button
+                                        class="icon-button"
+                                        id="zoomOut"
+                                        aria-label="縮小軌道視圖"
+                                    >
+                                        −</button
+                                    ><button
+                                        class="icon-button"
+                                        id="resetView"
+                                        aria-label="重置軌道視圖"
+                                    >
+                                        ↺
+                                    </button>
+                                </div>
+                                <p class="canvas-hint">拖曳平移 · 滾輪縮放</p>
+                                <span class="canvas-scale"
+                                    >1 AU ≈ 149.6 M KM</span
+                                >
+                            </div>
+                            <div class="legend">
+                                <span
+                                    ><i class="legend-swatch swatch-earth"></i
+                                    >地球</span
+                                ><span
+                                    ><i class="legend-swatch swatch-mars"></i
+                                    >火星</span
+                                ><span
+                                    ><i class="legend-swatch swatch-craft"></i
+                                    >太空船</span
+                                ><span><i class="legend-line"></i>轉移軌道</span
+                                ><span class="legend-note"
+                                    >KEPLER PROPAGATION</span
+                                >
+                            </div>
+                            <div class="timeline">
+                                <div class="label-row">
+                                    <label for="flightScrubber">航程回放</label
+                                    ><output id="scrubValue">T + 000 d</output>
+                                </div>
+                                <input
+                                    id="flightScrubber"
+                                    type="range"
+                                    min="0"
+                                    max="1000"
+                                    value="0"
+                                    aria-label="航程回放進度"
+                                    disabled
+                                />
+                                <div class="range-extents">
+                                    <span>01 / 地球注入</span
+                                    ><span>02 / 深空巡航</span
+                                    ><span>03 / 火星會合</span>
+                                </div>
+                            </div>
+                            <section class="alignment-panel">
+                                <div class="alignment-copy">
+                                    <p class="section-code">LAUNCH GEOMETRY</p>
+                                    <h3>發射窗口</h3>
+                                    <p id="geometryStatus">正在計算…</p>
+                                </div>
+                                <div class="alignment-readout">
+                                    <div class="phase-values">
+                                        <span
+                                            >目前
+                                            <strong id="currentPhase"
+                                                >--</strong
+                                            ></span
+                                        ><span
+                                            >目標
+                                            <strong id="targetPhase"
+                                                >--</strong
+                                            ></span
+                                        >
+                                    </div>
+                                    <div
+                                        class="alignment-track"
+                                        aria-hidden="true"
+                                    >
+                                        <span class="target-notch"></span
+                                        ><span
+                                            id="alignmentMarker"
+                                            class="alignment-marker"
+                                        ></span>
+                                    </div>
+                                    <div class="phase-scale">
+                                        <span>提早</span><span>窗口</span
+                                        ><span>延後</span>
+                                    </div>
+                                </div>
+                            </section>
+                        </section>
+                        <aside class="control-column" id="mission-control">
+                            <section class="control-card">
+                                <div class="card-heading">
+                                    <p class="section-code">
+                                        FLIGHT DIRECTOR / 01
+                                    </p>
+                                    <h2>任務設定</h2>
+                                </div>
+                                <div class="control-group">
+                                    <span
+                                        class="control-label"
+                                        id="transfer-mode-label"
+                                        >選擇航線</span
+                                    >
+                                    <div
+                                        class="mode-selector"
+                                        role="group"
+                                        aria-labelledby="transfer-mode-label"
+                                    >
+                                        <button
+                                            class="mode-button is-active"
+                                            data-mode="hohmann"
+                                            id="mode-hohmann"
+                                            aria-pressed="true"
+                                        >
+                                            <span>霍曼</span
+                                            ><small>省能量</small></button
+                                        ><button
+                                            class="mode-button"
+                                            data-mode="fast"
+                                            id="mode-fast"
+                                            aria-pressed="false"
+                                        >
+                                            <span>快速</span
+                                            ><small>省時間</small></button
+                                        ><button
+                                            class="mode-button"
+                                            data-mode="custom"
+                                            id="mode-custom"
+                                            aria-pressed="false"
+                                        >
+                                            <span>即時解</span
+                                            ><small>LAMBERT</small>
+                                        </button>
+                                    </div>
+                                    <p
+                                        class="control-help"
+                                        id="modeSummary"
+                                    ></p>
+                                </div>
+                                <div class="control-group">
+                                    <div class="label-row">
+                                        <label for="launchWindow">發射日</label
+                                        ><output id="launchValue"
+                                            >第 684 天</output
+                                        >
+                                    </div>
+                                    <input
+                                        type="range"
+                                        id="launchWindow"
+                                        min="0"
+                                        max="780"
+                                        step="1"
+                                        value="684"
+                                    />
+                                    <div class="range-extents">
+                                        <span>會合週期 0</span
+                                        ><span>780 天</span>
+                                    </div>
+                                    <button class="text-button" id="findWindow">
+                                        對準最佳窗口 <span>↗</span>
+                                    </button>
+                                </div>
+                                <div class="control-group">
+                                    <div class="label-row">
+                                        <label for="speedSlider">時間倍率</label
+                                        ><output id="speedValue">24×</output>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        id="speedSlider"
+                                        min="1"
+                                        max="100"
+                                        step="1"
+                                        value="24"
+                                    />
+                                    <div class="range-extents">
+                                        <span>1×</span><span>100×</span>
+                                    </div>
+                                </div>
+                                <dl
+                                    class="profile-metrics"
+                                    id="missionParams"
+                                ></dl>
+                                <div class="primary-actions">
+                                    <button
+                                        class="primary-button"
+                                        id="startTransfer"
+                                    >
+                                        發射任務 ↗</button
+                                    ><button
+                                        class="secondary-button"
+                                        id="pauseButton"
+                                        disabled
+                                    >
+                                        暫停
+                                    </button>
+                                </div>
+                                <button
+                                    class="reset-button"
+                                    id="resetSimulation"
+                                >
+                                    重置任務
+                                </button>
+                            </section>
+                            <section class="control-card status-card">
+                                <div class="card-heading card-heading-inline">
+                                    <h2>遙測資料</h2>
+                                    <span class="state-tag" id="stateTag"
+                                        >STANDBY</span
+                                    >
+                                </div>
+                                <dl class="status-list">
+                                    <div>
+                                        <dt>任務狀態</dt>
+                                        <dd id="missionStatus">等待發射</dd>
+                                    </div>
+                                    <div>
+                                        <dt>距離太陽</dt>
+                                        <dd id="distance">1.00 AU</dd>
+                                    </div>
+                                    <div>
+                                        <dt>日心速度</dt>
+                                        <dd id="velocity">29.78 km/s</dd>
+                                    </div>
+                                    <div>
+                                        <dt>到火星距離</dt>
+                                        <dd id="marsDistance">-- AU</dd>
+                                    </div>
+                                </dl>
+                                <div class="progress-block">
+                                    <div class="label-row">
+                                        <span>軌道進度</span
+                                        ><strong id="progressText">0%</strong>
+                                    </div>
+                                    <div
+                                        class="progress-track"
+                                        id="progressBar"
+                                        role="progressbar"
+                                        aria-label="軌道進度"
+                                        aria-valuemin="0"
+                                        aria-valuemax="100"
+                                        aria-valuenow="0"
+                                    >
+                                        <span id="progressFill"></span>
+                                    </div>
+                                </div>
+                                <button
+                                    class="brief-button"
+                                    id="generateBrief"
+                                    hidden
+                                >
+                                    開啟任務簡報 ↗</button
+                                ><button
+                                    class="primary-button"
+                                    id="continueLanding"
+                                    hidden
+                                >
+                                    進入火星降落 →
+                                </button>
+                            </section>
+                        </aside>
                     </div>
-
-                    <dl class="profile-metrics" id="missionParams">
-                        <div><dt>飛行時間</dt><dd>259 天</dd></div>
-                        <div><dt>預計總 ΔV</dt><dd>5.60 km/s</dd></div>
-                    </dl>
-
-                    <div class="primary-actions">
-                        <button type="button" class="primary-button" id="startTransfer">開始轉移</button>
-                        <button type="button" class="secondary-button" id="pauseButton" disabled>暫停</button>
-                    </div>
-                    <button type="button" class="reset-button" id="resetSimulation">重置任務</button>
-                </section>
-
-                <section class="control-card status-card" aria-labelledby="status-heading">
-                    <div class="card-heading card-heading-inline">
+                    <section class="window-card">
                         <div>
-                            <p class="section-code">TELEMETRY / 03</p>
-                            <h2 id="status-heading">即時狀態</h2>
+                            <p class="section-code">WINDOW INTELLIGENCE</p>
+                            <h2>等一個好時機。</h2>
+                            <p>
+                                同一條航線，不同發射日。點選色格，看看你會離火星多遠。
+                            </p>
                         </div>
-                        <span class="state-tag" id="stateTag">STANDBY</span>
-                    </div>
-
-                    <dl class="status-list">
-                        <div><dt>任務狀態</dt><dd id="missionStatus">等待發射</dd></div>
-                        <div><dt>距離太陽</dt><dd id="distance">1.00 AU</dd></div>
-                        <div><dt>日心速度</dt><dd id="velocity">29.78 km/s</dd></div>
-                        <div><dt>到火星距離</dt><dd id="marsDistance">-- AU</dd></div>
-                    </dl>
-
-                    <div class="progress-block">
-                        <div class="label-row"><span>軌道進度</span><strong id="progressText">0%</strong></div>
-                        <div class="progress-track" id="progressBar" role="progressbar" aria-label="軌道進度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-                            <span id="progressFill"></span>
+                        <div class="window-visual">
+                            <div
+                                id="windowMap"
+                                class="window-map"
+                                role="group"
+                                aria-label="發射窗口誤差圖"
+                            ></div>
+                            <div class="range-extents">
+                                <span>DAY 0</span
+                                ><span id="windowMapNote"
+                                    >綠色：接近火星 · 紅色：錯過</span
+                                ><span>DAY 780</span>
+                            </div>
                         </div>
+                    </section>
+                </div>
+                <div id="landingWorkspace" hidden>
+                    <section
+                        class="telemetry-strip landing-telemetry"
+                        aria-label="降落遙測"
+                    >
+                        <div class="telemetry-item">
+                            <span class="telemetry-label"
+                                >RADAR ALTITUDE<br />地表高度</span
+                            ><strong id="landingAltitude"
+                                >8,000<small> m</small></strong
+                            >
+                        </div>
+                        <div class="telemetry-item">
+                            <span class="telemetry-label"
+                                >VERTICAL VELOCITY<br />下降速度</span
+                            ><strong id="landingVelocity"
+                                >320<small> m/s</small></strong
+                            >
+                        </div>
+                        <div class="telemetry-item">
+                            <span class="telemetry-label"
+                                >PROPELLANT<br />剩餘燃料</span
+                            ><strong id="landingFuel"
+                                >450<small> kg</small></strong
+                            >
+                        </div>
+                    </section>
+                    <div class="workspace">
+                        <section class="orbit-panel surface-panel">
+                            <div class="panel-heading">
+                                <div>
+                                    <p class="section-code">
+                                        TERMINAL DESCENT / SIMULATION
+                                    </p>
+                                    <h2 id="surfaceTitle">傑澤羅隕石坑</h2>
+                                </div>
+                                <span class="state-tag" id="landingState"
+                                    >READY</span
+                                >
+                            </div>
+                            <div class="canvas-frame surface-frame">
+                                <canvas
+                                    id="surfaceCanvas"
+                                    role="img"
+                                    aria-label="火星降落器、大氣層與地表的即時模擬"
+                                ></canvas>
+                                <div
+                                    class="canvas-top-label"
+                                    id="surfaceCoordinates"
+                                >
+                                    18.38° N / 77.58° E
+                                </div>
+                                <span class="surface-time" id="landingClock"
+                                    >T + 000.0 s</span
+                                >
+                                <div
+                                    class="surface-callout"
+                                    id="surfaceCallout"
+                                >
+                                    <span>THE LAST 8,000 METERS</span
+                                    ><strong>下一步，踏上火星。</strong>
+                                    <p>啟動自動引導，或親手控制降落。</p>
+                                </div>
+                                <div class="flight-dock" id="flightDock" hidden>
+                                    <div class="label-row">
+                                        <label for="dockThrottle"
+                                            >手動推力</label
+                                        ><output id="dockThrottleValue"
+                                            >0%</output
+                                        >
+                                    </div>
+                                    <input
+                                        id="dockThrottle"
+                                        type="range"
+                                        min="0"
+                                        max="100"
+                                        value="0"
+                                    />
+                                    <div class="dock-actions">
+                                        <button
+                                            id="dockChute"
+                                            class="secondary-button"
+                                        >
+                                            開傘</button
+                                        ><button
+                                            id="dockPause"
+                                            class="secondary-button"
+                                        >
+                                            暫停
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="surface-bottom">
+                                    <span id="surfacePhase"
+                                        >DESCENT SYSTEM ARMED</span
+                                    ><span>垂直下降模型</span>
+                                </div>
+                            </div>
+                            <div class="descent-stages">
+                                <span id="stageEntry" class="active"
+                                    ><b>01</b> 大氣減速</span
+                                ><span id="stageChute"><b>02</b> 開傘減速</span
+                                ><span id="stageBurn"><b>03</b> 動力下降</span
+                                ><span id="stageTouchdown"
+                                    ><b>04</b> 接觸地表</span
+                                >
+                            </div>
+                            <div
+                                class="landing-result"
+                                id="landingResult"
+                                role="status"
+                                hidden
+                            ></div>
+                            <div class="surface-explainer">
+                                <p class="section-code">YOUR MISSION</p>
+                                <h3>把速度降下來，把燃料留下來。</h3>
+                                <p>
+                                    從 8 km 高度開始。低於 7,800 m、速度低於 500
+                                    m/s 可開傘；點火會自動切傘。接地速度 ≤ 8 m/s
+                                    即成功。
+                                </p>
+                            </div>
+                        </section>
+                        <aside class="control-column">
+                            <section class="control-card">
+                                <div class="card-heading">
+                                    <p class="section-code">
+                                        DESCENT DIRECTOR / 02
+                                    </p>
+                                    <h2>降落控制</h2>
+                                </div>
+                                <div class="control-group">
+                                    <label
+                                        class="control-label"
+                                        for="landingSite"
+                                        >降落地點 / 情境難度</label
+                                    ><select id="landingSite">
+                                        <option value="jezero">
+                                            傑澤羅隕石坑 · 標準
+                                        </option>
+                                        <option value="elysium">
+                                            埃律西昂平原 · 輕鬆
+                                        </option>
+                                        <option value="olympus">
+                                            奧林帕斯高地 · 挑戰
+                                        </option>
+                                    </select>
+                                    <p
+                                        class="control-help"
+                                        id="siteDescription"
+                                    >
+                                        標準大氣・450 kg 燃料
+                                    </p>
+                                </div>
+                                <div class="control-group">
+                                    <span class="control-label">飛行控制</span>
+                                    <div
+                                        class="pilot-selector"
+                                        role="group"
+                                        aria-label="飛行控制"
+                                    >
+                                        <button
+                                            id="pilotAuto"
+                                            class="mode-button is-active"
+                                            aria-pressed="true"
+                                        >
+                                            自動引導</button
+                                        ><button
+                                            id="pilotManual"
+                                            class="mode-button"
+                                            aria-pressed="false"
+                                        >
+                                            手動接管
+                                        </button>
+                                    </div>
+                                    <p class="control-help" id="pilotHelp">
+                                        電腦控制降落傘與推力，觀察完整降落流程。
+                                    </p>
+                                </div>
+                                <div class="control-group">
+                                    <div class="label-row">
+                                        <label for="throttle">引擎推力</label
+                                        ><output id="throttleValue">0%</output>
+                                    </div>
+                                    <input
+                                        id="throttle"
+                                        type="range"
+                                        min="0"
+                                        max="100"
+                                        value="0"
+                                        disabled
+                                    />
+                                    <div class="range-extents">
+                                        <span>OFF</span><span>18 kN / MAX</span>
+                                    </div>
+                                    <button
+                                        id="deployChute"
+                                        class="secondary-button full"
+                                        disabled
+                                    >
+                                        展開降落傘
+                                    </button>
+                                </div>
+                                <div class="control-group">
+                                    <div class="label-row">
+                                        <label for="descentSpeed"
+                                            >模擬速度</label
+                                        ><output id="descentSpeedValue"
+                                            >4×</output
+                                        >
+                                    </div>
+                                    <input
+                                        type="range"
+                                        id="descentSpeed"
+                                        min="1"
+                                        max="10"
+                                        value="4"
+                                    />
+                                </div>
+                                <div class="primary-actions">
+                                    <button
+                                        id="startLanding"
+                                        class="primary-button"
+                                    >
+                                        開始降落 ↓</button
+                                    ><button
+                                        id="pauseLanding"
+                                        class="secondary-button"
+                                        disabled
+                                    >
+                                        暫停
+                                    </button>
+                                </div>
+                                <button id="resetLanding" class="reset-button">
+                                    重置降落
+                                </button>
+                            </section>
+                            <section class="control-card">
+                                <p class="section-code">FLIGHT LOG</p>
+                                <ol
+                                    id="descentLog"
+                                    class="event-log"
+                                    aria-label="降落事件記錄"
+                                >
+                                    <li><time>T+0</time>降落系統就緒</li>
+                                </ol>
+                            </section>
+                            <p class="model-caption">
+                                可獨立練習。軌道任務抵達後也可銜接此情境；降落初始條件固定，不推算大氣進入段。地點與大氣倍率為遊戲情境。
+                            </p>
+                        </aside>
                     </div>
-
-                    <button type="button" class="brief-button" id="generateBrief" hidden>開啟任務簡報</button>
+                </div>
+                <section class="archive-card">
+                    <div class="archive-heading">
+                        <div>
+                            <p class="section-code">MISSION ARCHIVE / LOCAL</p>
+                            <h2>每一次嘗試，都算數。</h2>
+                        </div>
+                        <button
+                            class="secondary-button"
+                            id="exportMissions"
+                            disabled
+                        >
+                            匯出任務 JSON ↗
+                        </button>
+                    </div>
+                    <div id="missionArchive" class="archive-list">
+                        <p class="empty-state">
+                            尚無任務紀錄。完成一次轉移或降落，航程就會留在這裡。
+                        </p>
+                    </div>
                 </section>
-
                 <details class="model-note">
-                    <summary>模型範圍與限制</summary>
-                    <p>本工具採用共面圓形行星軌道與預設轉移橢圓，用於理解發射相位與 ΔV 取捨；未納入軌道傾角、攝動、有限推力或真實星曆，不可用於實際任務導航。</p>
+                    <summary>關於這個宇宙：模型與操作說明</summary>
+                    <p>
+                        軌道採共面圓形行星軌道、二體轉移與 Lambert
+                        掃描；橢圓以克卜勒方程推進。ΔV
+                        是日心速度差，未計算從地表升空所需能量。發射日為模型週期，不是真實日期。抵達
+                        0.05 AU 內視為會合區命中。
+                    </p>
+                    <p>
+                        降落為一維遊戲模型，包含火星重力、大氣阻力、即時開傘、可變質量推力及燃料消耗；不包含升力、熱防護、橫向導航或真實地形。場景為程序繪製。常數與大氣參考
+                        <a
+                            href="https://www.grc.nasa.gov/www/k-12/airplane/atmosmrm.html"
+                            target="_blank"
+                            rel="noreferrer"
+                            >NASA Glenn</a
+                        >。僅供探索，不用於真實航太導航。
+                    </p>
+                    <p>
+                        軌道發射後可拖動時間軸；拖動會暫停。空白鍵暫停目前頁面的任務，輸入控制元件內不會攔截按鍵。紀錄僅存於本機瀏覽器，最多保留
+                        12 次。
+                    </p>
                 </details>
-            </aside>
-        </main>
-
-        <footer class="site-footer">
-            <span>MARS TRANSFER LAB</span>
-            <span>所有計算於瀏覽器本機完成，不需 API key。</span>
-        </footer>
-    </div>
-
-    <dialog class="mission-dialog" id="missionDialog" aria-labelledby="briefTitle">
-        <div class="dialog-topline">
-            <p class="section-code">POST-FLIGHT BRIEF</p>
-            <button type="button" class="dialog-close" id="closeDialog" aria-label="關閉任務簡報">關閉</button>
+            </main>
+            <footer class="site-footer">
+                <span>ARES <b>/</b> BUILT FOR THE CURIOUS.</span
+                ><span>無帳號 · 無 API key · 本機運算 · 離線可用</span
+                ><a href="https://github.com/LEO0047/mars-simulator"
+                    >SOURCE ↗</a
+                >
+            </footer>
         </div>
-        <div id="briefContent"></div>
-    </dialog>
-
-    <div class="notification" id="notification" role="status" aria-live="polite"></div>
-
-    <script type="module" src="app.mjs"></script>
-</body>
+        <dialog
+            class="mission-dialog"
+            id="missionDialog"
+            aria-labelledby="briefTitle"
+        >
+            <div class="dialog-topline">
+                <p class="section-code">POST-FLIGHT BRIEF</p>
+                <button
+                    class="dialog-close"
+                    id="closeDialog"
+                    aria-label="關閉任務簡報"
+                >
+                    關閉 ×
+                </button>
+            </div>
+            <div id="briefContent"></div>
+        </dialog>
+        <div
+            class="notification"
+            id="notification"
+            role="status"
+            aria-live="polite"
+        ></div>
+        <script type="module" src="app.mjs"></script>
+    </body>
 </html>

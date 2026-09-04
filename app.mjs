@@ -1,3 +1,4 @@
+import { initSurface } from './surface.mjs';
 import {
     CONSTANTS,
     TRANSFER_MODES,
@@ -11,15 +12,57 @@ import {
     solveTransferForLaunchDay,
 } from './simulation.mjs';
 
-const elements = Object.fromEntries([
-    'orbitCanvas', 'totalDistance', 'fuelUsed', 'missionDay', 'headerStatus', 'modeBadge',
-    'currentPhase', 'targetPhase', 'geometryStatus', 'alignmentMarker', 'launchWindow',
-    'launchValue', 'speedSlider', 'speedValue', 'modeSummary', 'missionParams',
-    'startTransfer', 'pauseButton', 'resetSimulation', 'missionStatus', 'distance',
-    'velocity', 'marsDistance', 'progressText', 'progressBar', 'progressFill', 'stateTag',
-    'generateBrief', 'missionDialog', 'briefContent', 'closeDialog', 'notification',
-    'zoomIn', 'zoomOut', 'resetView', 'findWindow',
-].map((id) => [id, document.getElementById(id)]));
+const elements = Object.fromEntries(
+    [
+        'orbitCanvas',
+        'totalDistance',
+        'fuelUsed',
+        'missionDay',
+        'headerStatus',
+        'modeBadge',
+        'currentPhase',
+        'targetPhase',
+        'geometryStatus',
+        'alignmentMarker',
+        'launchWindow',
+        'launchValue',
+        'speedSlider',
+        'speedValue',
+        'modeSummary',
+        'missionParams',
+        'startTransfer',
+        'pauseButton',
+        'resetSimulation',
+        'missionStatus',
+        'distance',
+        'velocity',
+        'marsDistance',
+        'progressText',
+        'progressBar',
+        'progressFill',
+        'stateTag',
+        'generateBrief',
+        'missionDialog',
+        'briefContent',
+        'closeDialog',
+        'notification',
+        'zoomIn',
+        'zoomOut',
+        'resetView',
+        'findWindow',
+        'flightScrubber',
+        'scrubValue',
+        'continueLanding',
+        'orbitTab',
+        'landingTab',
+        'orbitWorkspace',
+        'landingWorkspace',
+        'windowMap',
+        'windowMapNote',
+        'missionArchive',
+        'exportMissions',
+    ].map((id) => [id, document.getElementById(id)]),
+);
 
 const canvas = elements.orbitCanvas;
 const context = canvas.getContext('2d');
@@ -42,6 +85,9 @@ const palette = {
     danger: '#e87967',
 };
 
+let selectedView = 'orbit';
+let missionRecorded = false;
+let distanceTable = [];
 let selectedModeId = 'hohmann';
 let currentMode = TRANSFER_MODES.hohmann;
 let launchDay = Math.round(calculateOptimalLaunchDay(currentMode));
@@ -118,10 +164,19 @@ function getSpriteScale() {
 }
 
 function drawImageCover(image) {
-    const scale = Math.max(canvas.width / image.naturalWidth, canvas.height / image.naturalHeight);
+    const scale = Math.max(
+        canvas.width / image.naturalWidth,
+        canvas.height / image.naturalHeight,
+    );
     const width = image.naturalWidth * scale;
     const height = image.naturalHeight * scale;
-    context.drawImage(image, (canvas.width - width) / 2, (canvas.height - height) / 2, width, height);
+    context.drawImage(
+        image,
+        (canvas.width - width) / 2,
+        (canvas.height - height) / 2,
+        width,
+        height,
+    );
 }
 
 function drawAtlasSprite(name, point, size, rotation = 0) {
@@ -164,7 +219,7 @@ function drawBackground(transform) {
 
     if (visualAssets.background.ready) {
         context.save();
-        context.globalAlpha = 0.78;
+        context.globalAlpha = 0.42;
         drawImageCover(visualAssets.background.image);
         context.restore();
     }
@@ -212,7 +267,13 @@ function drawBackground(transform) {
 function drawOrbit(radiusAU, transform, color) {
     context.save();
     context.beginPath();
-    context.arc(transform.x, transform.y, radiusAU * transform.scale, 0, Math.PI * 2);
+    context.arc(
+        transform.x,
+        transform.y,
+        radiusAU * transform.scale,
+        0,
+        Math.PI * 2,
+    );
     context.strokeStyle = color;
     context.lineWidth = Math.max(1, getCanvasUnit());
     context.stroke();
@@ -223,7 +284,11 @@ function drawTransferPlan(transform, startAngle) {
     context.save();
     context.beginPath();
     for (let index = 0; index <= 140; index += 1) {
-        const position = getTransferPosition(currentMode, index / 140, startAngle);
+        const position = getTransferPosition(
+            currentMode,
+            index / 140,
+            startAngle,
+        );
         const point = worldToScreen(position, transform);
         if (index === 0) context.moveTo(point.x, point.y);
         else context.lineTo(point.x, point.y);
@@ -266,7 +331,13 @@ function drawSun(transform) {
     context.save();
     context.shadowBlur = 26 * unit;
     context.shadowColor = palette.sun;
-    if (!drawAtlasSprite('sun', { x: transform.x, y: transform.y }, 54 * spriteScale)) {
+    if (
+        !drawAtlasSprite(
+            'sun',
+            { x: transform.x, y: transform.y },
+            54 * spriteScale,
+        )
+    ) {
         context.beginPath();
         context.arc(transform.x, transform.y, radius, 0, Math.PI * 2);
         context.fillStyle = palette.sun;
@@ -284,7 +355,14 @@ function drawEarth(position, transform, time) {
     context.save();
     context.shadowBlur = 13 * unit;
     context.shadowColor = palette.earth;
-    if (!drawAtlasSprite('earth', point, 40 * spriteScale, position.angle * 0.12)) {
+    if (
+        !drawAtlasSprite(
+            'earth',
+            point,
+            40 * spriteScale,
+            position.angle * 0.12,
+        )
+    ) {
         context.beginPath();
         context.arc(point.x, point.y, radius, 0, Math.PI * 2);
         context.fillStyle = palette.earth;
@@ -294,25 +372,50 @@ function drawEarth(position, transform, time) {
         context.rotate(position.angle * 1.8);
         context.fillStyle = palette.earthLand;
         context.beginPath();
-        context.ellipse(-radius * 0.15, 0, radius * 0.72, radius * 0.3, 0.5, 0, Math.PI * 2);
-        context.ellipse(radius * 0.55, -radius * 0.45, radius * 0.34, radius * 0.2, -0.5, 0, Math.PI * 2);
+        context.ellipse(
+            -radius * 0.15,
+            0,
+            radius * 0.72,
+            radius * 0.3,
+            0.5,
+            0,
+            Math.PI * 2,
+        );
+        context.ellipse(
+            radius * 0.55,
+            -radius * 0.45,
+            radius * 0.34,
+            radius * 0.2,
+            -0.5,
+            0,
+            Math.PI * 2,
+        );
         context.fill();
     }
     context.restore();
 
-    const moonAngle = time / 27.3 * Math.PI * 2;
+    const moonAngle = (time / 27.3) * Math.PI * 2;
     const moonOrbit = 0.06;
-    const moon = worldToScreen({
-        x: position.x + Math.cos(moonAngle) * moonOrbit,
-        y: position.y + Math.sin(moonAngle) * moonOrbit,
-    }, transform);
+    const moon = worldToScreen(
+        {
+            x: position.x + Math.cos(moonAngle) * moonOrbit,
+            y: position.y + Math.sin(moonAngle) * moonOrbit,
+        },
+        transform,
+    );
     context.save();
     context.shadowBlur = 8 * unit;
     context.shadowColor = '#b8bec3';
     if (!drawAtlasSprite('moon', moon, 15 * spriteScale, moonAngle * 0.05)) {
         context.fillStyle = '#b8bec3';
         context.beginPath();
-        context.arc(moon.x, moon.y, Math.max(1.4, 2 * unit * view.zoom), 0, Math.PI * 2);
+        context.arc(
+            moon.x,
+            moon.y,
+            Math.max(1.4, 2 * unit * view.zoom),
+            0,
+            Math.PI * 2,
+        );
         context.fill();
     }
     context.restore();
@@ -327,7 +430,9 @@ function drawMars(position, transform) {
     context.save();
     context.shadowBlur = 13 * unit;
     context.shadowColor = palette.mars;
-    if (!drawAtlasSprite('mars', point, 37 * spriteScale, position.angle * 0.08)) {
+    if (
+        !drawAtlasSprite('mars', point, 37 * spriteScale, position.angle * 0.08)
+    ) {
         context.beginPath();
         context.arc(point.x, point.y, radius, 0, Math.PI * 2);
         context.fillStyle = palette.mars;
@@ -337,7 +442,15 @@ function drawMars(position, transform) {
         context.rotate(position.angle);
         context.fillStyle = palette.marsDark;
         context.beginPath();
-        context.ellipse(0, radius * 0.2, radius * 0.85, radius * 0.28, -0.3, 0, Math.PI * 2);
+        context.ellipse(
+            0,
+            radius * 0.2,
+            radius * 0.85,
+            radius * 0.28,
+            -0.3,
+            0,
+            Math.PI * 2,
+        );
         context.fill();
     }
     context.restore();
@@ -392,7 +505,7 @@ function draw() {
     const transform = {
         x: canvas.width / 2 + view.panX,
         y: canvas.height / 2 + view.panY,
-        scale: canvas.width / 5.3 * view.zoom,
+        scale: Math.min(canvas.width / 3.9, canvas.height / 3.9) * view.zoom,
     };
     drawBackground(transform);
     drawOrbit(CONSTANTS.EARTH_ORBIT_AU, transform, 'rgba(106, 165, 218, 0.33)');
@@ -403,17 +516,33 @@ function draw() {
         CONSTANTS.EARTH_PERIOD_DAYS,
         launchDay,
     );
-    drawTransferPlan(transform, spacecraft.phase === 'waiting' ? launchPosition.angle : spacecraft.startAngle);
+    drawTransferPlan(
+        transform,
+        spacecraft.phase === 'waiting'
+            ? launchPosition.angle
+            : spacecraft.startAngle,
+    );
     drawTrail(transform);
     drawSun(transform);
 
     const missionTime = spacecraft.phase === 'waiting' ? 0 : simulatedDays;
     const currentDay = launchDay + missionTime;
-    const earth = getPlanetPosition(CONSTANTS.EARTH_ORBIT_AU, CONSTANTS.EARTH_PERIOD_DAYS, currentDay);
-    const mars = getPlanetPosition(CONSTANTS.MARS_ORBIT_AU, CONSTANTS.MARS_PERIOD_DAYS, currentDay);
+    const earth = getPlanetPosition(
+        CONSTANTS.EARTH_ORBIT_AU,
+        CONSTANTS.EARTH_PERIOD_DAYS,
+        currentDay,
+    );
+    const mars = getPlanetPosition(
+        CONSTANTS.MARS_ORBIT_AU,
+        CONSTANTS.MARS_PERIOD_DAYS,
+        currentDay,
+    );
     drawEarth(earth, transform, currentDay);
     drawMars(mars, transform);
-    drawSpacecraft(spacecraft.phase === 'waiting' ? earth : spacecraft.position, transform);
+    drawSpacecraft(
+        spacecraft.phase === 'waiting' ? earth : spacecraft.position,
+        transform,
+    );
     needsRedraw = false;
 }
 
@@ -427,12 +556,17 @@ function showNotification(message, type = 'success') {
 }
 
 function getStateCopy() {
-    if (spacecraft.phase === 'transfer' && isPaused) return ['轉移暫停', 'PAUSED'];
+    if (spacecraft.phase === 'transfer' && isPaused)
+        return ['轉移暫停', 'PAUSED'];
     switch (spacecraft.phase) {
-        case 'transfer': return [`${currentMode.name}進行中`, 'IN FLIGHT'];
-        case 'arrived': return ['成功進入火星會合區', 'ARRIVED'];
-        case 'failed': return ['未命中火星會合區', 'MISSED'];
-        default: return ['等待發射', 'STANDBY'];
+        case 'transfer':
+            return [`${currentMode.name}進行中`, 'IN FLIGHT'];
+        case 'arrived':
+            return ['成功進入火星會合區', 'ARRIVED'];
+        case 'failed':
+            return ['未命中火星會合區', 'MISSED'];
+        default:
+            return ['等待發射', 'STANDBY'];
     }
 }
 
@@ -462,31 +596,47 @@ function updateModeUI() {
         button.classList.toggle('is-active', isActive);
         button.setAttribute('aria-pressed', String(isActive));
     });
+    buildDistanceTable();
+    renderWindowMap();
     elements.modeBadge.textContent = currentMode.id.toUpperCase();
     elements.modeSummary.textContent = currentMode.summary;
     elements.missionParams.innerHTML = `
-        <div><dt>飛行時間</dt><dd>${currentMode.durationDays} 天</dd></div>
+        <div><dt>飛行時間</dt><dd>${Number(currentMode.durationDays.toFixed(1))} 天</dd></div>
         <div><dt>預計總 ΔV</dt><dd>${getModeDeltaV(currentMode).toFixed(2)} km/s</dd></div>
     `;
 }
 
 function updateUI() {
     const [statusText, stateCode] = getStateCopy();
-    const currentDay = launchDay + (spacecraft.phase === 'waiting' ? 0 : simulatedDays);
-    const earth = getPlanetPosition(CONSTANTS.EARTH_ORBIT_AU, CONSTANTS.EARTH_PERIOD_DAYS, currentDay);
-    const mars = getPlanetPosition(CONSTANTS.MARS_ORBIT_AU, CONSTANTS.MARS_PERIOD_DAYS, currentDay);
-    const craftPosition = spacecraft.phase === 'waiting' ? earth : spacecraft.position;
+    const currentDay =
+        launchDay + (spacecraft.phase === 'waiting' ? 0 : simulatedDays);
+    const earth = getPlanetPosition(
+        CONSTANTS.EARTH_ORBIT_AU,
+        CONSTANTS.EARTH_PERIOD_DAYS,
+        currentDay,
+    );
+    const mars = getPlanetPosition(
+        CONSTANTS.MARS_ORBIT_AU,
+        CONSTANTS.MARS_PERIOD_DAYS,
+        currentDay,
+    );
+    const craftPosition =
+        spacecraft.phase === 'waiting' ? earth : spacecraft.position;
     const solarDistance = getDistance({ x: 0, y: 0 }, craftPosition);
-    const velocity = spacecraft.phase === 'waiting'
-        ? 29.78
-        : getSpacecraftVelocity(currentMode, solarDistance);
+    const velocity =
+        spacecraft.phase === 'waiting'
+            ? 29.78
+            : getSpacecraftVelocity(currentMode, solarDistance);
     const progressPercent = Math.round(spacecraft.progress * 100);
 
     document.body.dataset.state = spacecraft.phase;
-    elements.headerStatus.textContent = statusText;
+    if (selectedView === 'orbit')
+        elements.headerStatus.textContent = statusText;
     elements.missionStatus.textContent = statusText;
     elements.stateTag.textContent = stateCode;
-    elements.totalDistance.textContent = (spacecraft.distanceKm / 1e6).toFixed(spacecraft.distanceKm >= 1e6 ? 1 : 0);
+    elements.totalDistance.textContent = (spacecraft.distanceKm / 1e6).toFixed(
+        spacecraft.distanceKm >= 1e6 ? 1 : 0,
+    );
     elements.fuelUsed.textContent = spacecraft.deltaV.toFixed(2);
     elements.missionDay.textContent = Math.floor(simulatedDays);
     elements.distance.textContent = `${solarDistance.toFixed(2)} AU`;
@@ -500,7 +650,20 @@ function updateUI() {
     elements.startTransfer.disabled = spacecraft.phase !== 'waiting';
     elements.pauseButton.disabled = spacecraft.phase !== 'transfer';
     elements.pauseButton.textContent = isPaused ? '繼續' : '暫停';
-    elements.generateBrief.hidden = !['arrived', 'failed'].includes(spacecraft.phase);
+    elements.generateBrief.hidden = !['arrived', 'failed'].includes(
+        spacecraft.phase,
+    );
+    elements.continueLanding.hidden = spacecraft.phase !== 'arrived';
+    elements.flightScrubber.disabled = spacecraft.phase === 'waiting';
+    elements.flightScrubber.value = String(
+        Math.round(spacecraft.progress * 1000),
+    );
+    elements.scrubValue.textContent = `T + ${simulatedDays.toFixed(1).padStart(5, '0')} d`;
+    elements.windowMap.querySelectorAll('button').forEach((button) => {
+        const selected = Math.abs(Number(button.dataset.day) - launchDay) <= 10;
+        button.classList.toggle('selected', selected);
+        button.setAttribute('aria-pressed', String(selected));
+    });
     updateGeometryUI();
 }
 
@@ -509,6 +672,7 @@ function resetMission({ notify = true, preserveView = false } = {}) {
     isPaused = true;
     spacecraft = createSpacecraft();
     missionOutcome = null;
+    missionRecorded = false;
     elements.generateBrief.hidden = true;
     if (!preserveView) view = { zoom: 1, panX: 0, panY: 0 };
     updateUI();
@@ -573,7 +737,9 @@ function finishTransfer() {
     const succeeded = geometry.arrivalErrorAU <= CONSTANTS.ARRIVAL_THRESHOLD_AU;
     spacecraft.phase = succeeded ? 'arrived' : 'failed';
     spacecraft.progress = 1;
-    spacecraft.deltaV += succeeded ? currentMode.insertionDeltaV : 0;
+    spacecraft.deltaV =
+        currentMode.injectionDeltaV +
+        (succeeded ? currentMode.insertionDeltaV : 0);
     isPaused = true;
     missionOutcome = {
         succeeded,
@@ -584,10 +750,22 @@ function finishTransfer() {
         distanceKm: spacecraft.distanceKm,
         deltaV: spacecraft.deltaV,
     };
+    if (!missionRecorded) {
+        recordMission({
+            kind: 'orbit',
+            title: currentMode.name,
+            success: succeeded,
+            detail: `${simulatedDays.toFixed(1)} d · ${spacecraft.deltaV.toFixed(2)} km/s`,
+            data: missionOutcome,
+        });
+        missionRecorded = true;
+    }
     updateUI();
     needsRedraw = true;
     showNotification(
-        succeeded ? '任務成功：太空船進入火星會合區。' : `任務未命中：抵達誤差 ${geometry.arrivalErrorAU.toFixed(3)} AU。`,
+        succeeded
+            ? '任務成功：太空船進入火星會合區。'
+            : `任務未命中：抵達誤差 ${geometry.arrivalErrorAU.toFixed(3)} AU。`,
         succeeded ? 'success' : 'error',
     );
 }
@@ -595,13 +773,16 @@ function finishTransfer() {
 function update(deltaTime) {
     if (isPaused || spacecraft.phase !== 'transfer') return;
     simulatedDays = Math.min(
-        simulatedDays + animationSpeed * deltaTime / 1000 * 2,
+        simulatedDays + ((animationSpeed * deltaTime) / 1000) * 2,
         currentMode.durationDays,
     );
     spacecraft.progress = simulatedDays / currentMode.durationDays;
-    const previousPosition = spacecraft.position;
-    spacecraft.position = getTransferPosition(currentMode, spacecraft.progress, spacecraft.startAngle);
-    spacecraft.distanceKm += getDistance(previousPosition, spacecraft.position) * CONSTANTS.AU_M / 1000;
+    spacecraft.position = getTransferPosition(
+        currentMode,
+        spacecraft.progress,
+        spacecraft.startAngle,
+    );
+    spacecraft.distanceKm = distanceAtProgress(spacecraft.progress);
     spacecraft.trail.push(spacecraft.position);
     if (spacecraft.trail.length > 320) spacecraft.trail.shift();
     updateUI();
@@ -611,10 +792,13 @@ function update(deltaTime) {
 }
 
 function animate(timestamp) {
-    const deltaTime = lastTimestamp ? Math.min(timestamp - lastTimestamp, 80) : 0;
+    const deltaTime = lastTimestamp
+        ? Math.min(timestamp - lastTimestamp, 80)
+        : 0;
     lastTimestamp = timestamp;
     update(deltaTime);
-    if (needsRedraw) draw();
+    surfaceController.tick(deltaTime);
+    if (needsRedraw && selectedView === 'orbit') draw();
     requestAnimationFrame(animate);
 }
 
@@ -632,7 +816,7 @@ function buildMissionBrief() {
     const { succeeded, geometry, mode, distanceKm, deltaV } = missionOutcome;
     const offset = Math.abs(geometry.dayOffset);
     const recommendation = succeeded
-        ? `窗口命中。若要比較時間成本，可改用快速轉移；它少 ${TRANSFER_MODES.hohmann.durationDays - TRANSFER_MODES.fast.durationDays} 天，但預計總 ΔV 增加 ${(getModeDeltaV(TRANSFER_MODES.fast) - getModeDeltaV(TRANSFER_MODES.hohmann)).toFixed(2)} km/s。`
+        ? `可進入火星降落情境。若要比較時間成本，可改用快速轉移；它少 ${TRANSFER_MODES.hohmann.durationDays - TRANSFER_MODES.fast.durationDays} 天，但預計總 ΔV 增加 ${(getModeDeltaV(TRANSFER_MODES.fast) - getModeDeltaV(TRANSFER_MODES.hohmann)).toFixed(2)} km/s。`
         : `將發射日調整至第 ${Math.round(geometry.optimalLaunchDay)} 天，可把目前 ${offset.toFixed(0)} 天的窗口偏差收斂到本模型的會合區。`;
     const resultCopy = succeeded
         ? '太空船在預設容許範圍內與火星會合。'
@@ -641,7 +825,7 @@ function buildMissionBrief() {
     elements.briefContent.innerHTML = `
         <section class="brief-result">
             <p class="section-code">${succeeded ? 'INTERCEPT CONFIRMED' : 'INTERCEPT MISSED'}</p>
-            <h2 id="briefTitle">${succeeded ? '任務成功' : '錯過火星'}</h2>
+            <h2 id="briefTitle">${succeeded ? '軌道會合成功' : '錯過火星'}</h2>
             <p>${resultCopy}</p>
         </section>
         <div class="brief-grid">
@@ -669,7 +853,8 @@ document.querySelectorAll('[data-mode]').forEach((button) => {
 });
 
 elements.launchWindow.addEventListener('input', (event) => {
-    if (spacecraft.phase !== 'waiting') resetMission({ notify: false, preserveView: true });
+    if (spacecraft.phase !== 'waiting')
+        resetMission({ notify: false, preserveView: true });
     launchDay = Number.parseInt(event.target.value, 10);
     if (selectedModeId === 'custom') {
         resolveCustomMode();
@@ -685,10 +870,12 @@ elements.speedSlider.addEventListener('input', (event) => {
 });
 
 elements.findWindow.addEventListener('click', () => {
-    const referenceMode = selectedModeId === 'custom' ? TRANSFER_MODES.hohmann : currentMode;
+    const referenceMode =
+        selectedModeId === 'custom' ? TRANSFER_MODES.hohmann : currentMode;
     launchDay = Math.round(calculateOptimalLaunchDay(referenceMode));
     elements.launchWindow.value = String(launchDay);
-    if (spacecraft.phase !== 'waiting') resetMission({ notify: false, preserveView: true });
+    if (spacecraft.phase !== 'waiting')
+        resetMission({ notify: false, preserveView: true });
     if (selectedModeId === 'custom') {
         resolveCustomMode();
         updateModeUI();
@@ -702,7 +889,9 @@ elements.startTransfer.addEventListener('click', beginTransfer);
 elements.pauseButton.addEventListener('click', togglePause);
 elements.resetSimulation.addEventListener('click', () => resetMission());
 elements.generateBrief.addEventListener('click', openMissionBrief);
-elements.closeDialog.addEventListener('click', () => elements.missionDialog.close());
+elements.closeDialog.addEventListener('click', () =>
+    elements.missionDialog.close(),
+);
 elements.missionDialog.addEventListener('click', (event) => {
     if (event.target === elements.missionDialog) elements.missionDialog.close();
 });
@@ -721,7 +910,12 @@ elements.resetView.addEventListener('click', () => {
 });
 
 canvas.addEventListener('pointerdown', (event) => {
-    pointerState = { active: true, x: event.clientX, y: event.clientY, id: event.pointerId };
+    pointerState = {
+        active: true,
+        x: event.clientX,
+        y: event.clientY,
+        id: event.pointerId,
+    };
     canvas.setPointerCapture(event.pointerId);
     canvas.classList.add('is-dragging');
 });
@@ -745,17 +939,230 @@ canvas.addEventListener('pointercancel', () => {
     pointerState.active = false;
     canvas.classList.remove('is-dragging');
 });
-canvas.addEventListener('wheel', (event) => {
-    event.preventDefault();
-    view.zoom = clamp(view.zoom * (event.deltaY < 0 ? 1.08 : 0.92), 0.55, 2.4);
-    needsRedraw = true;
-}, { passive: false });
+canvas.addEventListener(
+    'wheel',
+    (event) => {
+        event.preventDefault();
+        view.zoom = clamp(
+            view.zoom * (event.deltaY < 0 ? 1.08 : 0.92),
+            0.55,
+            2.4,
+        );
+        needsRedraw = true;
+    },
+    { passive: false },
+);
 
 const resizeObserver = new ResizeObserver(() => {
     syncCanvasResolution();
     needsRedraw = true;
 });
 resizeObserver.observe(canvas);
+
+const ARCHIVE_KEY = 'ares-mission-archive-v2';
+let archive = [];
+try {
+    const saved = JSON.parse(localStorage.getItem(ARCHIVE_KEY) || '[]');
+    if (Array.isArray(saved))
+        archive = saved
+            .filter(
+                (row) =>
+                    row &&
+                    ['orbit', 'landing'].includes(row.kind) &&
+                    typeof row.title === 'string' &&
+                    typeof row.detail === 'string' &&
+                    typeof row.success === 'boolean' &&
+                    typeof row.timestamp === 'string' &&
+                    Number.isFinite(Date.parse(row.timestamp)),
+            )
+            .slice(0, 12);
+} catch {
+    /* Storage may be unavailable or contain damaged data. */
+}
+function renderArchive() {
+    elements.exportMissions.disabled = archive.length === 0;
+    if (!archive.length) return;
+    elements.missionArchive.replaceChildren(
+        ...archive.map((item) => {
+            const row = document.createElement('div');
+            row.className = 'archive-row';
+            const date = document.createElement('span');
+            date.className = 'archive-date';
+            date.textContent = new Date(item.timestamp).toLocaleDateString(
+                'zh-TW',
+            );
+            const title = document.createElement('span');
+            title.textContent = `${item.kind === 'orbit' ? '↗' : '↓'} ${item.title}`;
+            const detail = document.createElement('span');
+            detail.className = 'archive-detail';
+            detail.textContent = item.detail;
+            const result = document.createElement('span');
+            result.className = `archive-result${item.success ? '' : ' failed'}`;
+            result.textContent = item.success ? 'SUCCESS' : 'RETRY';
+            row.append(date, title, detail, result);
+            return row;
+        }),
+    );
+}
+function recordMission(item) {
+    archive.unshift({ ...item, timestamp: new Date().toISOString() });
+    archive = archive.slice(0, 12);
+    try {
+        localStorage.setItem(ARCHIVE_KEY, JSON.stringify(archive));
+    } catch {
+        showNotification('瀏覽器無法儲存紀錄；這次仍可直接匯出。', 'error');
+    }
+    renderArchive();
+}
+elements.exportMissions.addEventListener('click', () => {
+    const blob = new Blob(
+        [
+            JSON.stringify(
+                { application: 'ARES', version: 2, missions: archive },
+                null,
+                2,
+            ),
+        ],
+        { type: 'application/json' },
+    );
+    const url = URL.createObjectURL(blob),
+        link = document.createElement('a');
+    link.href = url;
+    link.download = 'ares-missions.json';
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+});
+function buildDistanceTable() {
+    distanceTable = [0];
+    let previous = getTransferPosition(currentMode, 0, 0);
+    for (let i = 1; i <= 400; i++) {
+        const point = getTransferPosition(currentMode, i / 400, 0);
+        distanceTable.push(
+            distanceTable[i - 1] +
+                (getDistance(previous, point) * CONSTANTS.AU_M) / 1000,
+        );
+        previous = point;
+    }
+}
+function distanceAtProgress(progress) {
+    const index = clamp(progress, 0, 1) * 400,
+        low = Math.floor(index),
+        high = Math.min(400, low + 1);
+    return (
+        distanceTable[low] +
+        (distanceTable[high] - distanceTable[low]) * (index - low)
+    );
+}
+function renderWindowMap() {
+    elements.windowMap.replaceChildren();
+    const mode =
+        selectedModeId === 'custom' ? TRANSFER_MODES.hohmann : currentMode;
+    elements.windowMapNote.textContent =
+        selectedModeId === 'custom'
+            ? '霍曼基準誤差；點選後重新求解'
+            : '綠色：接近火星 · 紅色：錯過';
+    for (let i = 0; i < 40; i++) {
+        const day = i * 20,
+            error = getLaunchGeometry(mode, day).arrivalErrorAU;
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.dataset.day = String(day);
+        button.style.setProperty(
+            '--cell',
+            error < 0.15
+                ? '#95cfc2'
+                : `hsl(${12 + Math.max(0, 1 - error) * 24} 49% ${22 + Math.max(0, 1 - error / 3) * 24}%)`,
+        );
+        button.setAttribute(
+            'aria-label',
+            `第 ${day} 天，${mode.name}抵達誤差 ${error.toFixed(2)} AU`,
+        );
+        button.title = `DAY ${day} / ${error.toFixed(2)} AU`;
+        button.addEventListener('click', () => {
+            elements.launchWindow.value = String(day);
+            elements.launchWindow.dispatchEvent(
+                new Event('input', { bubbles: true }),
+            );
+        });
+        elements.windowMap.append(button);
+    }
+}
+elements.flightScrubber.addEventListener('input', () => {
+    if (spacecraft.phase === 'waiting') return;
+    isPaused = true;
+    missionOutcome = null;
+    spacecraft.phase = 'transfer';
+    spacecraft.progress = Number(elements.flightScrubber.value) / 1000;
+    simulatedDays = spacecraft.progress * currentMode.durationDays;
+    spacecraft.position = getTransferPosition(
+        currentMode,
+        spacecraft.progress,
+        spacecraft.startAngle,
+    );
+    spacecraft.distanceKm = distanceAtProgress(spacecraft.progress);
+    spacecraft.deltaV = currentMode.injectionDeltaV;
+    spacecraft.trail = [];
+    for (let i = 0; i <= 120; i++)
+        spacecraft.trail.push(
+            getTransferPosition(
+                currentMode,
+                (spacecraft.progress * i) / 120,
+                spacecraft.startAngle,
+            ),
+        );
+    if (spacecraft.progress === 1) finishTransfer();
+    updateUI();
+    needsRedraw = true;
+});
+const surfaceController = initSurface({
+    notify: showNotification,
+    onComplete: recordMission,
+});
+function selectView(next) {
+    if (next === 'landing' && spacecraft.phase === 'transfer') isPaused = true;
+    selectedView = next;
+    const orbital = next === 'orbit';
+    elements.orbitWorkspace.hidden = !orbital;
+    elements.landingWorkspace.hidden = orbital;
+    elements.orbitTab.classList.toggle('is-active', orbital);
+    elements.landingTab.classList.toggle('is-active', !orbital);
+    elements.orbitTab.setAttribute('aria-pressed', String(orbital));
+    elements.landingTab.setAttribute('aria-pressed', String(!orbital));
+    surfaceController.setVisible(!orbital);
+    updateUI();
+    needsRedraw = true;
+}
+elements.orbitTab.addEventListener('click', () => selectView('orbit'));
+elements.landingTab.addEventListener('click', () => selectView('landing'));
+elements.continueLanding.addEventListener('click', () => {
+    selectView('landing');
+    elements.landingTab.focus();
+});
+document.addEventListener('keydown', (event) => {
+    if (
+        event.code !== 'Space' ||
+        event.repeat ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey ||
+        elements.missionDialog.open ||
+        event.target.closest(
+            'input,select,button,a,summary,textarea,[contenteditable]',
+        )
+    )
+        return;
+    event.preventDefault();
+    if (selectedView === 'orbit') togglePause();
+    else surfaceController.togglePause();
+});
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        if (spacecraft.phase === 'transfer') isPaused = true;
+        surfaceController.pause();
+        updateUI();
+    }
+});
+renderArchive();
 
 elements.launchWindow.value = String(launchDay);
 elements.speedSlider.value = String(animationSpeed);
